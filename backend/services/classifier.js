@@ -1,15 +1,35 @@
 const DEFAULT_RETRIEVAL_THRESHOLD = 0.5;
 
+function normalizeLanguageCode(language) {
+  if (typeof language !== 'string' || language.trim().length === 0) return 'en';
+  return language.split('-')[0].toLowerCase();
+}
+
+// Always includes the English trigger list as a baseline fallback, since a fan may mix
+// languages or type in English regardless of their declared/spoken language. This merge
+// happens over a plain, pre-translated list — no translation or LLM call is involved, so
+// the deterministic safety floor stays fast and dependency-free.
+function resolveTriggerList(escalationTriggers, language) {
+  if (!escalationTriggers || typeof escalationTriggers !== 'object') return [];
+  const langCode = normalizeLanguageCode(language);
+  const englishTriggers = escalationTriggers.en || [];
+  if (langCode === 'en') return englishTriggers;
+  const languageTriggers = escalationTriggers[langCode] || [];
+  return [...languageTriggers, ...englishTriggers];
+}
+
 async function classify(query, retrievedDocs, options = {}) {
   const {
-    escalationTriggers = [],
+    escalationTriggers = {},
+    language,
     askLLMToClassify,
     retrievalThreshold = DEFAULT_RETRIEVAL_THRESHOLD
   } = options;
 
   const normalized = query.toLowerCase().trim();
+  const triggerList = resolveTriggerList(escalationTriggers, language);
 
-  const matchedTrigger = escalationTriggers.find((trigger) =>
+  const matchedTrigger = triggerList.find((trigger) =>
     normalized.includes(trigger.toLowerCase())
   );
   if (matchedTrigger) {
@@ -43,4 +63,4 @@ async function classify(query, retrievedDocs, options = {}) {
   };
 }
 
-module.exports = { classify, DEFAULT_RETRIEVAL_THRESHOLD };
+module.exports = { classify, DEFAULT_RETRIEVAL_THRESHOLD, normalizeLanguageCode, resolveTriggerList };

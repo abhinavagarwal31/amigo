@@ -28,6 +28,7 @@ router.post('/', async (req, res) => {
 
     const classification = await classify(cleanQuery, retrievedDocs, {
       escalationTriggers: kb.escalationTriggers,
+      language: outputLanguage,
       askLLMToClassify: classifyAmbiguous
     });
 

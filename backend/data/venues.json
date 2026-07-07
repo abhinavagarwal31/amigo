@@ -60,10 +60,33 @@
       ]
     }
   ],
-  "escalationTriggers": [
-    "medical", "injury", "chest pain", "unconscious", "can't breathe", "cant breathe", "not breathing",
-    "lost child", "missing child",
-    "harassment", "assault", "threat", "weapon", "gun", "knife",
-    "fire", "smoke", "evacuation", "bomb"
-  ]
+  "escalationTriggers": {
+    "en": [
+      "medical", "injury", "chest pain", "unconscious", "can't breathe", "cant breathe", "not breathing",
+      "lost child", "missing child",
+      "harassment", "assault", "threat", "weapon", "gun", "knife",
+      "fire", "smoke", "evacuation", "bomb"
+    ],
+    "es": [
+      "médico", "medica", "herida", "herido", "dolor de pecho", "dolor en el pecho", "inconsciente",
+      "no puede respirar", "no respira",
+      "niño perdido", "niña perdida",
+      "acoso", "agresión", "amenaza", "arma", "pistola", "cuchillo",
+      "incendio", "humo", "evacuación", "bomba"
+    ],
+    "pt": [
+      "médico", "medica", "ferimento", "ferido", "dor no peito", "inconsciente",
+      "não consegue respirar", "não está respirando",
+      "criança perdida",
+      "assédio", "agressão", "ameaça", "arma", "pistola", "faca",
+      "incêndio", "fumaça", "evacuação", "bomba"
+    ],
+    "fr": [
+      "médical", "blessure", "blessé", "douleur thoracique", "douleur à la poitrine", "inconscient",
+      "ne peut pas respirer", "ne respire pas",
+      "enfant perdu", "enfant perdue",
+      "harcèlement", "agression", "menace", "arme", "pistolet", "couteau",
+      "incendie", "fumée", "évacuation", "bombe"
+    ]
+  }
 }

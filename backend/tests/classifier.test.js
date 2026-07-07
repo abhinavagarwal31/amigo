@@ -64,4 +64,43 @@ describe('classify', () => {
     expect(result.category).toBe('GROUNDED_FACT');
     expect(result.confidence).toBe('low');
   });
+
+  test('escalates a Spanish medical-emergency phrase using the Spanish trigger list', async () => {
+    const query = 'mi amigo no puede respirar bien';
+    const result = await classify(query, [], { escalationTriggers, language: 'es-ES' });
+    expect(result.category).toBe('ESCALATE');
+    expect(result.confidence).toBe('high');
+  });
+
+  test('escalates a Portuguese medical-emergency phrase using the Portuguese trigger list', async () => {
+    const query = 'meu amigo está com dor no peito';
+    const result = await classify(query, [], { escalationTriggers, language: 'pt-BR' });
+    expect(result.category).toBe('ESCALATE');
+    expect(result.confidence).toBe('high');
+  });
+
+  test('escalates a French medical-emergency phrase using the French trigger list', async () => {
+    const query = 'mon ami ne peut pas respirer';
+    const result = await classify(query, [], { escalationTriggers, language: 'fr-FR' });
+    expect(result.category).toBe('ESCALATE');
+    expect(result.confidence).toBe('high');
+  });
+
+  test('does not escalate a routine Spanish factual question', async () => {
+    const query = '¿dónde está el baño accesible más cercano?';
+    const retrievedDocs = retrieve(query, { venueId: 'venue_01', kb });
+    const result = await classify(query, retrievedDocs, { escalationTriggers, language: 'es-ES' });
+    expect(result.category).not.toBe('ESCALATE');
+  });
+
+  test('still escalates on an English trigger word even when the declared language is Spanish', async () => {
+    const query = 'medical emergency please help right now';
+    const result = await classify(query, [], { escalationTriggers, language: 'es-ES' });
+    expect(result.category).toBe('ESCALATE');
+  });
+
+  test('defaults to the English trigger list when no language is declared', async () => {
+    const result = await classify('chest pain', [], { escalationTriggers });
+    expect(result.category).toBe('ESCALATE');
+  });
 });
