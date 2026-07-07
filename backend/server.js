@@ -8,7 +8,8 @@ const alertRouter = require('./routes/alert');
 
 const app = express();
 
-app.use(cors());
+const allowedOrigin = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
+app.use(cors({ origin: allowedOrigin }));
 app.use(express.json({ limit: '100kb' }));
 
 app.use('/api/query', queryRouter);

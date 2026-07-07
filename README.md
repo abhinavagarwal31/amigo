@@ -147,3 +147,6 @@ and frontend component behavior (`AnswerCard`, `VoiceInputButton`, `EscalationBa
 - The kiosk is a shared public device: all session state clears on reset (explicit button or
   inactivity timeout), no conversation history persists across users, and no full query text
   is logged with identifying metadata client-side.
+- CORS is restricted to a single configured origin (`FRONTEND_ORIGIN`, default
+  `http://localhost:5173`) rather than left open to any origin — set this to your deployed
+  frontend's URL in production.
