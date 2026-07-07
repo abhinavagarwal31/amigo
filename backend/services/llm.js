@@ -21,8 +21,8 @@ Rules you must always follow:
 3. Keep it under 150 words, in clear plain language, organized as short sentences.
 4. Do not include medical, legal, or security advice.`;
 
-const CLASSIFIER_MODEL = 'gemini-1.5-flash';
-const ANSWER_MODEL = 'gemini-1.5-flash';
+const CLASSIFIER_MODEL = 'gemini-flash-latest';
+const ANSWER_MODEL = 'gemini-flash-latest';
 
 let cachedClient = null;
 
@@ -70,18 +70,19 @@ Respond ONLY with strict JSON in this exact shape: {"category": "ESCALATE" or "G
 
 QUESTION: ${query}`;
 
-  const result = await model.generateContent(prompt);
-  const text = result.response.text().trim();
-
   try {
+    const result = await model.generateContent(prompt);
+    const text = result.response.text().trim();
     return JSON.parse(text.replace(/```json|```/g, '').trim());
   } catch (err) {
-    // Fail closed: an uncertain, unparseable safety judgment must never resolve to
-    // "assume it's fine." Defaulting to ESCALATE costs a human a few seconds; defaulting
-    // to GROUNDED_FACT could mean a missed emergency.
+    // Fail closed: an uncertain safety judgment must never resolve to "assume it's fine" —
+    // whether the model call itself failed (network error, quota limit, outage) or its
+    // response was unparseable, both are caught here. Defaulting to ESCALATE costs a human
+    // a few seconds; defaulting to GROUNDED_FACT, or letting the request crash with no
+    // answer and no escalation guidance, could mean a missed emergency.
     return {
       category: 'ESCALATE',
-      reasoning: 'LLM classification response could not be parsed; defaulting to escalation as a safety precaution'
+      reasoning: 'LLM classification could not be completed; defaulting to escalation as a safety precaution'
     };
   }
 }

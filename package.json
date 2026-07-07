@@ -9,7 +9,8 @@
     "dev": "node backend/server.js",
     "dev:frontend": "vite",
     "build:frontend": "vite build",
-    "test": "jest",
+    "test": "jest --testPathIgnorePatterns=/tests/live/",
+    "test:live": "RUN_LIVE_TESTS=true jest backend/tests/live/",
     "lint": "eslint ."
   },
   "dependencies": {

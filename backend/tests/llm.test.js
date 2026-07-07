@@ -32,7 +32,19 @@ describe('classifyAmbiguous', () => {
     const result = await classifyAmbiguous('some ambiguous fan question');
 
     expect(result.category).toBe('ESCALATE');
-    expect(result.reasoning).toMatch(/could not be parsed/i);
+    expect(result.reasoning).toMatch(/could not be completed/i);
+  });
+
+  test('fails closed to ESCALATE when the Gemini API call itself throws (network error, quota, outage)', async () => {
+    // Found via live testing: a real 429 quota error from the API propagated uncaught
+    // because the old try/catch only wrapped JSON.parse, not the network call itself —
+    // that would crash the whole /api/query request instead of failing closed.
+    mockGenerateContent.mockRejectedValue(new Error('[429 Too Many Requests] quota exceeded'));
+
+    const result = await classifyAmbiguous('some ambiguous fan question');
+
+    expect(result.category).toBe('ESCALATE');
+    expect(result.reasoning).toMatch(/could not be completed/i);
   });
 
   test('fails closed to ESCALATE when Gemini returns an empty response', () => {

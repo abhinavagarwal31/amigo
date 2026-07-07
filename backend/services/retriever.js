@@ -16,7 +16,8 @@ const STOPWORDS = new Set([
   'donde', 'dónde', 'cuando', 'cuándo', 'que', 'qué', 'como', 'cómo', 'puede', 'puedo',
   'mas', 'más', 'cerca', 'cercano', 'cercana',
   // Portuguese
-  'um', 'uma', 'os', 'as', 'do', 'da', 'e', 'onde', 'quando', 'pode', 'posso',
+  'um', 'uma', 'o', 'os', 'as', 'do', 'da', 'e', 'é', 'são', 'fica', 'ficam',
+  'onde', 'quando', 'pode', 'posso',
   'mais', 'perto', 'próximo', 'próxima', 'proximo', 'proxima',
   // French
   'une', 'le', 'les', 'du', 'des', 'et', 'où', 'quand', 'comment', 'peut', 'puis',

@@ -78,6 +78,20 @@ describe('retriever', () => {
     expect(spanishResults[0].score).toBeGreaterThan(0.5);
   });
 
+  test('scores a full natural Portuguese sentence above the confidence threshold', () => {
+    // Found via live testing against the real Gemini API: "fica" (a common verb for "is
+    // located") and singular "o" ("the") weren't in the Portuguese stopword list, diluting
+    // this exact real-world phrasing to a score of exactly 0.5 — which fails classifier.js's
+    // strict `> 0.5` confidence check by the boundary, even though this was the correct doc.
+    const results = retrieve('Onde fica o banheiro acessível mais próximo?', {
+      venueId: 'venue_01',
+      kb
+    });
+
+    expect(results[0].type).toBe('restroom');
+    expect(results[0].score).toBeGreaterThan(0.5);
+  });
+
   test('builds the document index once at load time, not on every retrieve() call', () => {
     const buildDocIndexSpy = jest.spyOn(retrieverModule, 'buildDocIndex');
 

@@ -64,6 +64,8 @@ router.post('/', async (req, res) => {
       escalation: false
     });
   } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('Error in /api/query:', err);
     return res.status(500).json({ error: 'Internal server error' });
   }
 });

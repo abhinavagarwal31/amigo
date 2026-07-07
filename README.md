@@ -116,6 +116,12 @@ strictly from `venues.json` facts.
 - A real Gemini API key is required for the `GROUNDED_FACT`/`POLICY` answer path and the
   briefing generator; the `ESCALATE` short-circuit path works without one, since it never
   calls Gemini.
+- Verified against the real Gemini API: grounded answers typically took 2.5-6s round-trip
+  in testing (occasionally longer for the ambiguous-classification LLM-assist path); the
+  free tier also caps requests per model per **day** (not per minute) at a level easy to
+  exhaust during active manual testing, distinct from and much lower than this app's own
+  20-req/minute rate limiter. Budget for this before a live demo — either test conservatively
+  or use a paid-tier key.
 
 ## Running Locally
 
@@ -134,16 +140,34 @@ npm run dev:frontend
 - Kiosk view: http://localhost:5173/kiosk
 
 ```bash
-npm test              # backend (Node) + frontend (jsdom) Jest projects
+npm test              # backend (Node) + frontend (jsdom) Jest projects — fully mocked, no network
 npm run lint           # ESLint, including eslint-plugin-jsx-a11y
 npm run build:frontend # production Vite build
 ```
 
-Expected `npm test` output: 9 test suites, 48 tests, all passing — covering retrieval
-accuracy, escalation classification (medical/factual/policy/ambiguous cases), the full
-`/api/query` and `/api/briefing` pipelines (with Gemini mocked), the staff-alert endpoint,
-and frontend component behavior (`AnswerCard`, `VoiceInputButton`, `EscalationBanner`,
-`KioskView`'s full state machine).
+Expected `npm test` output: 13 test suites, 83 tests, all passing — covering retrieval
+accuracy (including multilingual and word-boundary edge cases), escalation classification
+(medical/factual/policy/ambiguous cases across en/es/pt/fr, plus fail-closed behavior on a
+parse/network failure), the full `/api/query` and `/api/briefing` pipelines (with Gemini
+mocked), CORS restriction, rate limiting, the staff-alert endpoint, and frontend component
+behavior (`AnswerCard`, `VoiceInputButton`, `EscalationBanner`, `KioskView`'s full state
+machine, and fetch-timeout handling).
+
+### Optional: live API verification
+
+`npm test` never makes a real network call. To manually verify the app against the real
+Gemini API (useful before a demo, or after touching prompt wording):
+
+```bash
+npm run test:live   # requires GEMINI_API_KEY in the environment; makes real, billed calls
+```
+
+This runs `backend/tests/live/gemini.live.test.js` only — 3 cases (grounded-fact, out-of-scope
+grounding, and the ambiguous-classification LLM-assist path) against the real API. It's
+excluded from `npm test` via `--testPathIgnorePatterns`, and additionally guarded internally
+(`describe.skip` unless `RUN_LIVE_TESTS=true` is also set) as a second safety net. Note: the
+Gemini free tier caps requests per model per day (not per minute) — heavy manual testing plus
+this suite can exhaust that quota, after which calls return 429 until the daily quota resets.
 
 ## Security Notes
 
