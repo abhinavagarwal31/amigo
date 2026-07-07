@@ -150,3 +150,7 @@ and frontend component behavior (`AnswerCard`, `VoiceInputButton`, `EscalationBa
 - CORS is restricted to a single configured origin (`FRONTEND_ORIGIN`, default
   `http://localhost:5173`) rather than left open to any origin — set this to your deployed
   frontend's URL in production.
+- `/api/query` and `/api/briefing` (the two routes that trigger paid Gemini calls) are
+  rate-limited to 20 requests/minute per IP. This is a per-IP, in-memory limiter that resets
+  on server restart — a reasonable floor for this prototype, not a production-grade rate
+  limiter.
