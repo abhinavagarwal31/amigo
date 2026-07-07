@@ -1,7 +1,7 @@
 {
-  "name": "volunteer-copilot",
+  "name": "amigo",
   "version": "1.0.0",
-  "description": "Volunteer Co-Pilot - multilingual, grounded RAG assistant for FIFA World Cup 2026 volunteers",
+  "description": "Amigo - multilingual, grounded RAG assistant for FIFA World Cup 2026 volunteers",
   "private": true,
   "type": "commonjs",
   "scripts": {

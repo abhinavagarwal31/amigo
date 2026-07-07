@@ -159,7 +159,7 @@ export function KioskView() {
   if (state === STATE.IDLE) {
     return (
       <main className="kiosk kiosk--idle">
-        <h1>Welcome to Volunteer Co-Pilot</h1>
+        <h1>Welcome to Amigo</h1>
         <p>Select your language to begin.</p>
         <div className="kiosk-language-grid">
           {LANGUAGES.map((lang) => (

@@ -27,7 +27,7 @@ const PORT = process.env.PORT || 3001;
 if (require.main === module) {
   app.listen(PORT, () => {
     // eslint-disable-next-line no-console
-    console.log(`Volunteer Co-Pilot backend listening on port ${PORT}`);
+    console.log(`Amigo backend listening on port ${PORT}`);
   });
 }
 

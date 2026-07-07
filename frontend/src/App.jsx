@@ -49,7 +49,7 @@ export default function App() {
 
   return (
     <main>
-      <h1>Volunteer Co-Pilot</h1>
+      <h1>Amigo</h1>
 
       <div className="selectors">
         <label htmlFor="venue-select">Venue</label>

@@ -1,4 +1,8 @@
-# Volunteer Co-Pilot
+# Amigo
+
+*Amigo* means friend — the role this tool plays for a volunteer who doesn't share a
+language with the fan in front of them, and can't be expected to know every rule, every
+gate, or every stadium by heart.
 
 ## Vertical
 
@@ -6,9 +10,9 @@ Volunteers — FIFA World Cup 2026 relies on tens of thousands of local voluntee
 human interface between organizers and fans across 16 stadiums in 3 countries. Volunteers
 cannot be trained on every rule, every venue layout, or every language a fan might speak.
 Wrong or slow answers erode trust and create safety risk when genuine emergencies get
-treated like routine questions. Volunteer Co-Pilot uses Generative AI to give any volunteer
-instant, grounded, multilingual answers to fan questions, and to recognize the moment a
-query needs a human specialist instead of an AI-generated answer.
+treated like routine questions. Amigo uses Generative AI to give any volunteer instant,
+grounded, multilingual answers to fan questions, and to recognize the moment a query needs
+a human specialist instead of an AI-generated answer.
 
 ## Approach and Logic
 
