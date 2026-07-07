@@ -21,6 +21,9 @@
   "settings": {
     "react": { "version": "detect" }
   },
+  "globals": {
+    "__KIOSK_VENUE_ID__": "readonly"
+  },
   "rules": {
     "react/prop-types": "off",
     "react/react-in-jsx-scope": "off"

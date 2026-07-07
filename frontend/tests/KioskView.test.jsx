@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import { KioskView } from '../src/components/KioskView';
+import { KioskView, resolveKioskVenueId } from '../src/components/KioskView';
+import { VENUES } from '../src/constants';
 
 class FakeSpeechRecognition {
   constructor() {
@@ -35,6 +36,26 @@ function hangingFetchRespectingAbort() {
       })
   );
 }
+
+describe('resolveKioskVenueId', () => {
+  afterEach(() => {
+    delete global.__KIOSK_VENUE_ID__;
+  });
+
+  test('falls back to the first known venue when no override is configured', () => {
+    expect(resolveKioskVenueId()).toBe(VENUES[0].id);
+  });
+
+  test('uses the configured venue when it matches a known venue id', () => {
+    global.__KIOSK_VENUE_ID__ = VENUES[1].id;
+    expect(resolveKioskVenueId()).toBe(VENUES[1].id);
+  });
+
+  test('falls back to the first known venue when the configured id is invalid', () => {
+    global.__KIOSK_VENUE_ID__ = 'not_a_real_venue';
+    expect(resolveKioskVenueId()).toBe(VENUES[0].id);
+  });
+});
 
 describe('KioskView', () => {
   beforeEach(() => {

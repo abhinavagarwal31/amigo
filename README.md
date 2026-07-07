@@ -92,9 +92,11 @@ strictly from `venues.json` facts.
 - Kiosk mode is a fully implemented self-service walk-up interface, reached via the `/kiosk`
   route and reusing the exact same backend and voice hooks as the volunteer view. It is
   fixed to a single pre-configured venue (representing how a real kiosk would be provisioned
-  at deployment), whereas the volunteer view lets the volunteer pick a venue. Physical kiosk
-  hardware, enclosure design, and OS-level browser lockdown are out of scope — this is a
-  software demonstration of the full interaction flow.
+  at deployment), whereas the volunteer view lets the volunteer pick a venue. The deployed
+  venue is configurable per kiosk via the `VITE_KIOSK_VENUE_ID` build-time environment
+  variable (falls back to the first known venue if unset or invalid) — set this per physical
+  kiosk deployment. Physical kiosk hardware, enclosure design, and OS-level browser lockdown
+  are out of scope — this is a software demonstration of the full interaction flow.
 - The kiosk's "Alert Nearby Staff" button calls `POST /api/alert`, which logs a timestamped,
   venue-tagged alert to an in-memory array and the server console. A production deployment
   would page a real staff-alerting system; this prototype demonstrates the escalation path

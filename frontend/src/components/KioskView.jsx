@@ -47,9 +47,21 @@ function getKioskEscalationText(lang) {
   return KIOSK_ESCALATION_TEXT[lang] || KIOSK_ESCALATION_TEXT['en-US'];
 }
 
+// A real kiosk is physically deployed at one specific stadium, configured at build/deploy
+// time via VITE_KIOSK_VENUE_ID (see vite.config.js), falling back to the first known venue
+// if unset or invalid. `__KIOSK_VENUE_ID__` is undefined (not a ReferenceError) when this
+// component runs outside Vite's build, e.g. under Jest.
+export function resolveKioskVenueId() {
+  const configured = typeof __KIOSK_VENUE_ID__ !== 'undefined' ? __KIOSK_VENUE_ID__ : '';
+  const isValid = configured && VENUES.some((venue) => venue.id === configured);
+  return isValid ? configured : VENUES[0].id;
+}
+
+const KIOSK_VENUE_ID = resolveKioskVenueId();
+
 export function KioskView() {
   const [state, setState] = useState(STATE.IDLE);
-  const [venueId] = useState(VENUES[0].id);
+  const [venueId] = useState(KIOSK_VENUE_ID);
   const [language, setLanguage] = useState(null);
   const [response, setResponse] = useState(null);
   const [error, setError] = useState(null);
