@@ -4,6 +4,7 @@ import { VoiceInputButton } from './components/VoiceInputButton';
 import { AnswerCard } from './components/AnswerCard';
 import { EscalationBanner } from './components/EscalationBanner';
 import { VENUES, LANGUAGES } from './constants';
+import { fetchWithTimeout } from './fetchWithTimeout';
 
 export default function App() {
   const [venueId, setVenueId] = useState(VENUES[0].id);
@@ -23,7 +24,7 @@ export default function App() {
       setResponse(null);
 
       try {
-        const res = await fetch('/api/query', {
+        const res = await fetchWithTimeout('/api/query', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ query: trimmed, venueId, outputLanguage: language })

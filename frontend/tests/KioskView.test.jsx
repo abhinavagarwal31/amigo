@@ -21,6 +21,21 @@ function mockFetchOnce(status, body) {
   });
 }
 
+function hangingFetchRespectingAbort() {
+  return jest.fn(
+    (url, options) =>
+      new Promise((resolve, reject) => {
+        if (options && options.signal) {
+          options.signal.addEventListener('abort', () => {
+            const err = new Error('The operation was aborted.');
+            err.name = 'AbortError';
+            reject(err);
+          });
+        }
+      })
+  );
+}
+
 describe('KioskView', () => {
   beforeEach(() => {
     FakeSpeechRecognition.instances = [];
@@ -73,6 +88,28 @@ describe('KioskView', () => {
       '/api/query',
       expect.objectContaining({ body: expect.stringContaining('is gate a open') })
     );
+  });
+
+  test('shows an error state instead of hanging forever when the query request times out', async () => {
+    jest.useFakeTimers();
+    global.fetch = hangingFetchRespectingAbort();
+
+    render(<KioskView />);
+    fireEvent.click(screen.getByRole('button', { name: 'English' }));
+
+    const input = screen.getByLabelText(/or type your question/i);
+    fireEvent.change(input, { target: { value: 'is gate a open' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /^submit$/i }));
+    });
+
+    expect(screen.getByRole('status')).toHaveTextContent(/finding your answer/i);
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(15000);
+    });
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/could not reach the server/i);
   });
 
   test('tapping the mic transitions LISTENING -> PROCESSING -> RESPONDING with a grounded answer', async () => {
