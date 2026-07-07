@@ -41,9 +41,15 @@ const WHEELCHAIR_KEYWORDS =
   'wheelchair accessible silla de ruedas accesible cadeira de rodas acessível fauteuil roulant accessible';
 const TRANSIT_KEYWORDS = 'transit train bus metro tren autobús trem ônibus métro last departure última salida última partida dernier départ';
 const POLICY_KEYWORDS = 'policy política politica';
+// Extension point: if venues.json ever uses a gate status value not listed here, add its
+// four-language keyword entry too. An unmapped status still degrades safely — buildDocs()
+// falls back to the raw status string below — but it loses the translated-keyword boost
+// for non-English queries until it's added here.
 const GATE_STATUS_KEYWORDS = {
   open: 'open abierto aberto ouvert',
-  closed: 'closed cerrado fechado fermé'
+  closed: 'closed cerrado fechado fermé',
+  restricted: 'restricted restringido restrito restreint',
+  delayed: 'delayed retrasado atrasado retardé'
 };
 
 function buildDocs(venue) {

@@ -94,4 +94,31 @@ describe('retriever', () => {
 
     buildDocIndexSpy.mockRestore();
   });
+
+  test('degrades gracefully for a gate status not present in GATE_STATUS_KEYWORDS', () => {
+    const syntheticVenue = {
+      id: 'venue_test',
+      name: 'Test Venue',
+      gates: [
+        { id: 'gate_z', status: 'staff-only', wheelchairAccessible: false, notes: 'Employees only' }
+      ],
+      restrooms: [],
+      transit: [],
+      policies: []
+    };
+    const syntheticKb = {
+      venues: [syntheticVenue],
+      escalationTriggers: {},
+      docIndex: retrieverModule.buildDocIndex(syntheticVenue)
+    };
+
+    expect(() => retrieve('gate_z', { venueId: 'venue_test', kb: syntheticKb })).not.toThrow();
+
+    const results = retrieve('gate_z', { venueId: 'venue_test', kb: syntheticKb });
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0].type).toBe('gate');
+    // No translated keyword boost for an unmapped status, but the raw string is still
+    // present and the gate is still indexed/retrievable — not silently dropped.
+    expect(results[0].text).toMatch(/staff-only/);
+  });
 });
