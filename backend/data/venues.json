@@ -1,0 +1,69 @@
+{
+  "venues": [
+    {
+      "id": "venue_01",
+      "name": "MetLife Stadium",
+      "city": "East Rutherford, NJ",
+      "gates": [
+        { "id": "gate_a", "status": "open", "wheelchairAccessible": true, "notes": "Nearest to Section 100-120" },
+        { "id": "gate_c", "status": "closed", "wheelchairAccessible": false, "notes": "Closed for renovation, use Gate A or B instead" }
+      ],
+      "restrooms": [
+        { "location": "Section 214 concourse", "wheelchairAccessible": true },
+        { "location": "Section 105 concourse", "wheelchairAccessible": false }
+      ],
+      "transit": [
+        { "mode": "train", "line": "NJ Transit Meadowlands", "lastDeparture": "23:30" },
+        { "mode": "bus", "line": "Meadowlands Express", "lastDeparture": "23:45" }
+      ],
+      "policies": [
+        { "topic": "re-entry", "answer": "Re-entry is not permitted once a fan exits the venue, except for medical reasons verified by on-site staff." },
+        { "topic": "bag policy", "answer": "Only clear bags no larger than 12x6x12 inches, or small clutch bags no larger than 4.5x6.5 inches, are permitted." }
+      ]
+    },
+    {
+      "id": "venue_02",
+      "name": "AT&T Stadium",
+      "city": "Arlington, TX",
+      "gates": [
+        { "id": "gate_1", "status": "open", "wheelchairAccessible": true, "notes": "Main entrance, nearest to parking lots A and B" },
+        { "id": "gate_4", "status": "open", "wheelchairAccessible": true, "notes": "Nearest to Section 300-320" }
+      ],
+      "restrooms": [
+        { "location": "Section 128 concourse", "wheelchairAccessible": true },
+        { "location": "Section 240 concourse", "wheelchairAccessible": true }
+      ],
+      "transit": [
+        { "mode": "bus", "line": "Arlington Rideshare Shuttle", "lastDeparture": "00:00" }
+      ],
+      "policies": [
+        { "topic": "re-entry", "answer": "Re-entry is not permitted once a fan exits the venue, except for medical reasons verified by on-site staff." },
+        { "topic": "ticket issues", "answer": "Fans with ticket scanning issues should proceed to the Box Office at Gate 1 for resolution." }
+      ]
+    },
+    {
+      "id": "venue_03",
+      "name": "Estadio Azteca",
+      "city": "Mexico City, Mexico",
+      "gates": [
+        { "id": "puerta_1", "status": "open", "wheelchairAccessible": true, "notes": "Closest to accessible parking" },
+        { "id": "puerta_8", "status": "open", "wheelchairAccessible": false, "notes": "General admission, high foot traffic" }
+      ],
+      "restrooms": [
+        { "location": "Nivel 2 concourse", "wheelchairAccessible": true }
+      ],
+      "transit": [
+        { "mode": "metro", "line": "Linea Tren Ligero", "lastDeparture": "00:30" }
+      ],
+      "policies": [
+        { "topic": "re-entry", "answer": "Re-entry is not permitted once a fan exits the venue, except for medical reasons verified by on-site staff." }
+      ]
+    }
+  ],
+  "escalationTriggers": [
+    "medical", "injury", "chest pain", "unconscious", "can't breathe", "cant breathe", "not breathing",
+    "lost child", "missing child",
+    "harassment", "assault", "threat", "weapon", "gun", "knife",
+    "fire", "smoke", "evacuation", "bomb"
+  ]
+}
