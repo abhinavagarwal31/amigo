@@ -59,6 +59,25 @@ describe('retriever', () => {
     expect(results[0].type).toBe('gate');
   });
 
+  test('scores a full natural Spanish sentence as confidently as its English equivalent', () => {
+    // Regression check: Spanish filler words ("dónde", "está", "el", "más") used to count
+    // as unmatched query tokens and dilute the score well below the classifier's confidence
+    // threshold, even though the correct doc was still the top result. A real fan is far
+    // more likely to type/say a full sentence than an isolated two-word phrase.
+    const englishResults = retrieve('where is the nearest accessible restroom', {
+      venueId: 'venue_01',
+      kb
+    });
+    const spanishResults = retrieve('¿dónde está el baño accesible más cercano?', {
+      venueId: 'venue_01',
+      kb
+    });
+
+    expect(spanishResults[0].type).toBe('restroom');
+    expect(spanishResults[0].score).toBe(englishResults[0].score);
+    expect(spanishResults[0].score).toBeGreaterThan(0.5);
+  });
+
   test('builds the document index once at load time, not on every retrieve() call', () => {
     const buildDocIndexSpy = jest.spyOn(retrieverModule, 'buildDocIndex');
 

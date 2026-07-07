@@ -1,10 +1,26 @@
 const fs = require('fs');
 const path = require('path');
 
+// Filler/function words to strip before scoring, so token overlap reflects meaningful
+// content words instead of grammar. English-only stopwords would silently penalize
+// natural non-English sentences relative to their English equivalents (extra unmatched
+// filler tokens dilute the match score) — so each supported language's equivalents of
+// "where/is/the/nearest/what/how" etc. are included too.
 const STOPWORDS = new Set([
+  // English
   'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'to', 'of', 'in', 'on', 'at',
   'for', 'and', 'or', 'do', 'does', 'my', 'me', 'i', 'it', 'this', 'that', 'there',
-  'where', 'when', 'what', 'how', 'can', 'could', 'would', 'should', 'near', 'nearest'
+  'where', 'when', 'what', 'how', 'can', 'could', 'would', 'should', 'near', 'nearest',
+  // Spanish
+  'un', 'una', 'el', 'la', 'los', 'las', 'de', 'del', 'y', 'es', 'son', 'esta', 'está',
+  'donde', 'dónde', 'cuando', 'cuándo', 'que', 'qué', 'como', 'cómo', 'puede', 'puedo',
+  'mas', 'más', 'cerca', 'cercano', 'cercana',
+  // Portuguese
+  'um', 'uma', 'os', 'as', 'do', 'da', 'e', 'onde', 'quando', 'pode', 'posso',
+  'mais', 'perto', 'próximo', 'próxima', 'proximo', 'proxima',
+  // French
+  'une', 'le', 'les', 'du', 'des', 'et', 'où', 'quand', 'comment', 'peut', 'puis',
+  'plus', 'proche', 'près', 'pres'
 ]);
 
 function tokenize(text) {

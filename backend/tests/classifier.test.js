@@ -86,11 +86,12 @@ describe('classify', () => {
     expect(result.confidence).toBe('high');
   });
 
-  test('does not escalate a routine Spanish factual question', async () => {
+  test('classifies a full natural Spanish factual sentence as a confident GROUNDED_FACT', async () => {
     const query = '¿dónde está el baño accesible más cercano?';
     const retrievedDocs = retrieve(query, { venueId: 'venue_01', kb });
     const result = await classify(query, retrievedDocs, { escalationTriggers, language: 'es-ES' });
-    expect(result.category).not.toBe('ESCALATE');
+    expect(result.category).toBe('GROUNDED_FACT');
+    expect(result.confidence).toBe('high');
   });
 
   test('still escalates on an English trigger word even when the declared language is Spanish', async () => {
