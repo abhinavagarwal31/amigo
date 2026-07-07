@@ -37,4 +37,24 @@ describe('retriever', () => {
     const results = retrieve('', { venueId: 'venue_01', kb });
     expect(results).toEqual([]);
   });
+
+  test('finds the accessible restroom for a Spanish query', () => {
+    const results = retrieve('baño accesible', { venueId: 'venue_01', kb });
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0].type).toBe('restroom');
+    expect(results[0].text).toMatch(/Section 214/);
+  });
+
+  test('finds the accessible restroom for a Portuguese query', () => {
+    const results = retrieve('banheiro acessível', { venueId: 'venue_01', kb });
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0].type).toBe('restroom');
+    expect(results[0].text).toMatch(/Section 214/);
+  });
+
+  test('finds gate info for a French query', () => {
+    const results = retrieve('porte ouvert', { venueId: 'venue_01', kb });
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0].type).toBe('gate');
+  });
 });

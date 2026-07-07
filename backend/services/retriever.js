@@ -20,16 +20,34 @@ function tokenize(text) {
     .filter((token) => token.length > 0 && !STOPWORDS.has(token));
 }
 
+// Multilingual keyword expansions for each document category, so a Spanish/Portuguese/
+// French query can retrieve the same (English-authored) fact doc. These are fixed keyword
+// synonyms added to searchText only — they never touch the underlying fact text/data, so
+// the LLM still only ever sees the original, versioned venue facts.
+const RESTROOM_KEYWORDS = 'restroom bathroom toilet baño banheiro toilettes';
+const GATE_KEYWORDS = 'gate puerta portão porte';
+const WHEELCHAIR_KEYWORDS =
+  'wheelchair accessible silla de ruedas accesible cadeira de rodas acessível fauteuil roulant accessible';
+const TRANSIT_KEYWORDS = 'transit train bus metro tren autobús trem ônibus métro last departure última salida última partida dernier départ';
+const POLICY_KEYWORDS = 'policy política politica';
+const GATE_STATUS_KEYWORDS = {
+  open: 'open abierto aberto ouvert',
+  closed: 'closed cerrado fechado fermé'
+};
+
 function buildDocs(venue) {
   const docs = [];
 
   for (const gate of venue.gates || []) {
+    const statusKeywords = GATE_STATUS_KEYWORDS[gate.status] || gate.status;
     docs.push({
       type: 'gate',
       venueId: venue.id,
       venueName: venue.name,
       text: `Gate ${gate.id}: status ${gate.status}, wheelchair accessible: ${gate.wheelchairAccessible}. ${gate.notes || ''}`,
-      searchText: `gate ${gate.id} ${gate.status} ${gate.wheelchairAccessible ? 'wheelchair accessible' : ''} ${gate.notes || ''}`,
+      searchText: `${GATE_KEYWORDS} ${gate.id} ${statusKeywords} ${
+        gate.wheelchairAccessible ? WHEELCHAIR_KEYWORDS : ''
+      } ${gate.notes || ''}`,
       data: gate
     });
   }
@@ -40,7 +58,9 @@ function buildDocs(venue) {
       venueId: venue.id,
       venueName: venue.name,
       text: `Restroom at ${restroom.location}, wheelchair accessible: ${restroom.wheelchairAccessible}.`,
-      searchText: `restroom bathroom toilet ${restroom.location} ${restroom.wheelchairAccessible ? 'wheelchair accessible' : ''}`,
+      searchText: `${RESTROOM_KEYWORDS} ${restroom.location} ${
+        restroom.wheelchairAccessible ? WHEELCHAIR_KEYWORDS : ''
+      }`,
       data: restroom
     });
   }
@@ -51,7 +71,7 @@ function buildDocs(venue) {
       venueId: venue.id,
       venueName: venue.name,
       text: `${transitOption.mode} (${transitOption.line}): last departure at ${transitOption.lastDeparture}.`,
-      searchText: `transit train bus metro ${transitOption.mode} ${transitOption.line} last departure`,
+      searchText: `${TRANSIT_KEYWORDS} ${transitOption.mode} ${transitOption.line}`,
       data: transitOption
     });
   }
@@ -62,7 +82,7 @@ function buildDocs(venue) {
       venueId: venue.id,
       venueName: venue.name,
       text: policy.answer,
-      searchText: `policy ${policy.topic} ${policy.answer}`,
+      searchText: `${POLICY_KEYWORDS} ${policy.topic} ${policy.answer}`,
       data: policy
     });
   }
