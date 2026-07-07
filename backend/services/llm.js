@@ -76,9 +76,12 @@ QUESTION: ${query}`;
   try {
     return JSON.parse(text.replace(/```json|```/g, '').trim());
   } catch (err) {
+    // Fail closed: an uncertain, unparseable safety judgment must never resolve to
+    // "assume it's fine." Defaulting to ESCALATE costs a human a few seconds; defaulting
+    // to GROUNDED_FACT could mean a missed emergency.
     return {
-      category: 'GROUNDED_FACT',
-      reasoning: 'failed to parse LLM classification output, defaulting to non-escalation'
+      category: 'ESCALATE',
+      reasoning: 'LLM classification response could not be parsed; defaulting to escalation as a safety precaution'
     };
   }
 }
