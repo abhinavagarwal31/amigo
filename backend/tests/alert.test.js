@@ -1,5 +1,6 @@
 const request = require('supertest');
 const app = require('../server');
+const alertRouter = require('../routes/alert');
 
 describe('POST /api/alert', () => {
   test('logs and acknowledges a staff alert for a valid venue', async () => {
@@ -22,5 +23,21 @@ describe('POST /api/alert', () => {
     const res = await request(app).post('/api/alert').send({ venueId: 'venue_02' });
     expect(res.status).toBe(201);
     expect(res.body.acknowledged).toBe(true);
+  });
+
+  test('caps the in-memory alerts array at MAX_ALERTS, dropping the oldest', async () => {
+    const overflow = 20;
+    let lastAlertId;
+
+    for (let i = 0; i < alertRouter.MAX_ALERTS + overflow; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      const res = await request(app).post('/api/alert').send({ venueId: 'venue_01' });
+      lastAlertId = res.body.alertId;
+    }
+
+    expect(alertRouter.alerts.length).toBe(alertRouter.MAX_ALERTS);
+    // The oldest entries were evicted, so the earliest surviving alert's id reflects that.
+    expect(alertRouter.alerts[0].id).toBe(lastAlertId - alertRouter.MAX_ALERTS + 1);
+    expect(alertRouter.alerts[alertRouter.alerts.length - 1].id).toBe(lastAlertId);
   });
 });
