@@ -104,4 +104,32 @@ describe('classify', () => {
     const result = await classify('chest pain', [], { escalationTriggers });
     expect(result.category).toBe('ESCALATE');
   });
+
+  test('does NOT escalate on "armario" (closet) even though it contains the substring "arma" (weapon)', async () => {
+    const query = 'necesito ir al armario';
+    const retrievedDocs = retrieve(query, { venueId: 'venue_01', kb });
+    const result = await classify(query, retrievedDocs, { escalationTriggers, language: 'es-ES' });
+    expect(result.category).not.toBe('ESCALATE');
+  });
+
+  test('still escalates on a genuine short-trigger word ("arma" = weapon) as its own token', async () => {
+    const query = 'tiene un arma';
+    const result = await classify(query, [], { escalationTriggers, language: 'es-ES' });
+    expect(result.category).toBe('ESCALATE');
+    expect(result.reason).toMatch(/arma/);
+  });
+
+  test('matches a multi-word trigger phrase ("dolor de pecho") only as the exact contiguous phrase', async () => {
+    const matchingQuery = 'tengo un fuerte dolor de pecho';
+    const matchResult = await classify(matchingQuery, [], { escalationTriggers, language: 'es-ES' });
+    expect(matchResult.category).toBe('ESCALATE');
+
+    const nonMatchingQuery = 'el dolor de mi pie y el color del pecho de pollo';
+    const retrievedDocs = retrieve(nonMatchingQuery, { venueId: 'venue_01', kb });
+    const nonMatchResult = await classify(nonMatchingQuery, retrievedDocs, {
+      escalationTriggers,
+      language: 'es-ES'
+    });
+    expect(nonMatchResult.category).not.toBe('ESCALATE');
+  });
 });

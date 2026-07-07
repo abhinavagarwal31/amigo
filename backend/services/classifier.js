@@ -1,8 +1,37 @@
+const { tokenize } = require('./retriever');
+
 const DEFAULT_RETRIEVAL_THRESHOLD = 0.5;
 
 function normalizeLanguageCode(language) {
   if (typeof language !== 'string' || language.trim().length === 0) return 'en';
   return language.split('-')[0].toLowerCase();
+}
+
+// Contiguous-subsequence check: are triggerTokens present, in order, as a run inside
+// queryTokens? Used instead of raw substring matching so a short trigger like "arma"
+// (weapon) can't false-positive inside an unrelated word like "armario" (closet) — tokens
+// are matched whole, not as substrings.
+function containsTokenSequence(queryTokens, triggerTokens) {
+  if (triggerTokens.length === 0 || triggerTokens.length > queryTokens.length) return false;
+
+  for (let start = 0; start <= queryTokens.length - triggerTokens.length; start += 1) {
+    let matched = true;
+    for (let offset = 0; offset < triggerTokens.length; offset += 1) {
+      if (queryTokens[start + offset] !== triggerTokens[offset]) {
+        matched = false;
+        break;
+      }
+    }
+    if (matched) return true;
+  }
+  return false;
+}
+
+// Both the trigger phrase and the query go through the same tokenizer, so contractions,
+// accents, and stopword handling stay consistent on both sides of the comparison.
+function matchesTrigger(queryTokens, trigger) {
+  const triggerTokens = tokenize(trigger);
+  return containsTokenSequence(queryTokens, triggerTokens);
 }
 
 // Always includes the English trigger list as a baseline fallback, since a fan may mix
@@ -18,6 +47,24 @@ function resolveTriggerList(escalationTriggers, language) {
   return [...languageTriggers, ...englishTriggers];
 }
 
+// Derived from the actual keys present in escalationTriggers (venues.json), not a
+// separately hardcoded list — so this can't silently drift out of sync as languages are
+// added or removed from the data.
+function getSupportedTriggerLanguages(escalationTriggers) {
+  if (!escalationTriggers || typeof escalationTriggers !== 'object') return [];
+  return Object.keys(escalationTriggers);
+}
+
+// 'full' means this language has its own translated trigger list (and retrieval keyword
+// coverage); 'partial' means it silently falls back to the English trigger baseline plus
+// the LLM-assist semantic backstop — still safe, but a real, honest scope limit worth
+// surfacing rather than hiding as an invisible implementation detail.
+function resolveTriggerCoverage(escalationTriggers, language) {
+  const langCode = normalizeLanguageCode(language);
+  const supportedLanguages = getSupportedTriggerLanguages(escalationTriggers);
+  return supportedLanguages.includes(langCode) ? 'full' : 'partial';
+}
+
 async function classify(query, retrievedDocs, options = {}) {
   const {
     escalationTriggers = {},
@@ -26,12 +73,10 @@ async function classify(query, retrievedDocs, options = {}) {
     retrievalThreshold = DEFAULT_RETRIEVAL_THRESHOLD
   } = options;
 
-  const normalized = query.toLowerCase().trim();
+  const queryTokens = tokenize(query);
   const triggerList = resolveTriggerList(escalationTriggers, language);
 
-  const matchedTrigger = triggerList.find((trigger) =>
-    normalized.includes(trigger.toLowerCase())
-  );
+  const matchedTrigger = triggerList.find((trigger) => matchesTrigger(queryTokens, trigger));
   if (matchedTrigger) {
     return {
       category: 'ESCALATE',
