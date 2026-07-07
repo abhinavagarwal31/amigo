@@ -7,11 +7,6 @@ const STOPWORDS = new Set([
   'where', 'when', 'what', 'how', 'can', 'could', 'would', 'should', 'near', 'nearest'
 ]);
 
-function loadKnowledgeBase(kbPath = path.join(__dirname, '..', 'data', 'venues.json')) {
-  const raw = fs.readFileSync(kbPath, 'utf-8');
-  return JSON.parse(raw);
-}
-
 function tokenize(text) {
   return text
     .toLowerCase()
@@ -90,14 +85,25 @@ function buildDocs(venue) {
   return docs;
 }
 
-function scoreDoc(queryTokens, doc) {
-  const docTokens = new Set(tokenize(doc.searchText));
+// Precomputes each doc's token set once, at knowledge-base-load time, rather than
+// re-tokenizing every document's searchText on every retrieve() call.
+function buildDocIndex(venue) {
+  return buildDocs(venue).map((doc) => ({ ...doc, tokens: new Set(tokenize(doc.searchText)) }));
+}
+
+function loadKnowledgeBase(kbPath = path.join(__dirname, '..', 'data', 'venues.json')) {
+  const raw = fs.readFileSync(kbPath, 'utf-8');
+  const data = JSON.parse(raw);
+  const docIndex = data.venues.flatMap((venue) => module.exports.buildDocIndex(venue));
+  return { ...data, docIndex };
+}
+
+function scoreDocTokens(queryTokens, docTokens) {
   let matches = 0;
   for (const token of queryTokens) {
     if (docTokens.has(token)) matches += 1;
   }
-  if (matches === 0) return 0;
-  return matches / queryTokens.length;
+  return matches === 0 ? 0 : matches / queryTokens.length;
 }
 
 function retrieve(query, options = {}) {
@@ -107,18 +113,18 @@ function retrieve(query, options = {}) {
 
   if (queryTokens.length === 0) return [];
 
-  const venues = venueId
-    ? knowledgeBase.venues.filter((v) => v.id === venueId)
-    : knowledgeBase.venues;
+  const candidateDocs = venueId
+    ? knowledgeBase.docIndex.filter((doc) => doc.venueId === venueId)
+    : knowledgeBase.docIndex;
 
-  const allDocs = venues.flatMap(buildDocs);
-
-  const scored = allDocs
-    .map((doc) => ({ ...doc, score: scoreDoc(queryTokens, doc) }))
+  const scored = candidateDocs
+    .map((doc) => ({ ...doc, score: scoreDocTokens(queryTokens, doc.tokens) }))
     .filter((doc) => doc.score > 0)
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => b.score - a.score)
+    // eslint-disable-next-line no-unused-vars
+    .map(({ tokens, ...doc }) => doc);
 
   return scored.slice(0, topK);
 }
 
-module.exports = { retrieve, loadKnowledgeBase, tokenize };
+module.exports = { retrieve, loadKnowledgeBase, tokenize, buildDocIndex };

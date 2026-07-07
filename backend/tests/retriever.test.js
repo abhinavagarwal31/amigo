@@ -1,4 +1,5 @@
-const { retrieve, loadKnowledgeBase } = require('../services/retriever');
+const retrieverModule = require('../services/retriever');
+const { retrieve, loadKnowledgeBase } = retrieverModule;
 
 const kb = loadKnowledgeBase();
 
@@ -56,5 +57,22 @@ describe('retriever', () => {
     const results = retrieve('porte ouvert', { venueId: 'venue_01', kb });
     expect(results.length).toBeGreaterThan(0);
     expect(results[0].type).toBe('gate');
+  });
+
+  test('builds the document index once at load time, not on every retrieve() call', () => {
+    const buildDocIndexSpy = jest.spyOn(retrieverModule, 'buildDocIndex');
+
+    const freshKb = loadKnowledgeBase();
+    expect(buildDocIndexSpy).toHaveBeenCalledTimes(freshKb.venues.length);
+
+    buildDocIndexSpy.mockClear();
+
+    retrieve('restroom', { venueId: 'venue_01', kb: freshKb });
+    retrieve('gate', { venueId: 'venue_01', kb: freshKb });
+    retrieve('policy', { venueId: 'venue_02', kb: freshKb });
+
+    expect(buildDocIndexSpy).not.toHaveBeenCalled();
+
+    buildDocIndexSpy.mockRestore();
   });
 });
