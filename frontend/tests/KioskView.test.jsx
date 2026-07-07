@@ -48,6 +48,33 @@ describe('KioskView', () => {
     expect(screen.getByRole('button', { name: /tap to speak/i })).toBeInTheDocument();
   });
 
+  test('provides a keyboard/text fallback in LISTENING so voice is never required', async () => {
+    mockFetchOnce(200, {
+      answer: 'Gate A is open.',
+      category: 'GROUNDED_FACT',
+      confidence: 'high',
+      escalation: false,
+      sourceDocs: []
+    });
+
+    render(<KioskView />);
+    fireEvent.click(screen.getByRole('button', { name: 'English' }));
+
+    const input = screen.getByLabelText(/or type your question/i);
+    fireEvent.change(input, { target: { value: 'is gate a open' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /^submit$/i }));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Gate A is open/)).toBeInTheDocument();
+    });
+    expect(global.fetch).toHaveBeenCalledWith(
+      '/api/query',
+      expect.objectContaining({ body: expect.stringContaining('is gate a open') })
+    );
+  });
+
   test('tapping the mic transitions LISTENING -> PROCESSING -> RESPONDING with a grounded answer', async () => {
     mockFetchOnce(200, {
       answer: 'The nearest accessible restroom is at Section 214 concourse.',

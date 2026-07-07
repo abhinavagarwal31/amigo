@@ -53,6 +53,7 @@ export function KioskView() {
   const [response, setResponse] = useState(null);
   const [error, setError] = useState(null);
   const [alertSent, setAlertSent] = useState(false);
+  const [typedQuery, setTypedQuery] = useState('');
   const inactivityTimerRef = useRef(null);
 
   const { isSupported: recognitionSupported, isListening, start, stop } = useSpeechRecognition({
@@ -69,6 +70,7 @@ export function KioskView() {
     setResponse(null);
     setError(null);
     setAlertSent(false);
+    setTypedQuery('');
   }, [stop, stopSpeaking]);
 
   useEffect(() => {
@@ -129,6 +131,14 @@ export function KioskView() {
     );
   };
 
+  const handleTypedSubmit = (event) => {
+    event.preventDefault();
+    const trimmed = typedQuery.trim();
+    if (!trimmed) return;
+    setTypedQuery('');
+    submitQuery(trimmed, language);
+  };
+
   const handleAlertStaff = async () => {
     try {
       await fetch('/api/alert', {
@@ -186,6 +196,21 @@ export function KioskView() {
           </p>
         )}
         {error && <p role="alert">{error}</p>}
+
+        <form onSubmit={handleTypedSubmit} className="kiosk-typed-form">
+          <label htmlFor="kiosk-typed-query">Or type your question</label>
+          <input
+            id="kiosk-typed-query"
+            name="kiosk-typed-query"
+            type="text"
+            value={typedQuery}
+            onChange={(event) => setTypedQuery(event.target.value)}
+          />
+          <button type="submit" disabled={!typedQuery.trim()}>
+            Submit
+          </button>
+        </form>
+
         <button type="button" className="kiosk-secondary-btn" onClick={resetSession}>
           Start over
         </button>
