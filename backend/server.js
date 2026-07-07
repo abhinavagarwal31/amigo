@@ -4,6 +4,7 @@ const cors = require('cors');
 
 const queryRouter = require('./routes/query');
 const briefingRouter = require('./routes/briefing');
+const alertRouter = require('./routes/alert');
 
 const app = express();
 
@@ -12,6 +13,7 @@ app.use(express.json({ limit: '100kb' }));
 
 app.use('/api/query', queryRouter);
 app.use('/api/briefing', briefingRouter);
+app.use('/api/alert', alertRouter);
 
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {

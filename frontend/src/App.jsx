@@ -3,19 +3,7 @@ import { QueryInput } from './components/QueryInput';
 import { VoiceInputButton } from './components/VoiceInputButton';
 import { AnswerCard } from './components/AnswerCard';
 import { EscalationBanner } from './components/EscalationBanner';
-
-const VENUES = [
-  { id: 'venue_01', name: 'MetLife Stadium' },
-  { id: 'venue_02', name: 'AT&T Stadium' },
-  { id: 'venue_03', name: 'Estadio Azteca' }
-];
-
-const LANGUAGES = [
-  { code: 'en-US', label: 'English' },
-  { code: 'es-ES', label: 'Español' },
-  { code: 'pt-BR', label: 'Português' },
-  { code: 'fr-FR', label: 'Français' }
-];
+import { VENUES, LANGUAGES } from './constants';
 
 export default function App() {
   const [venueId, setVenueId] = useState(VENUES[0].id);
