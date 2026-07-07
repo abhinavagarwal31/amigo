@@ -81,7 +81,15 @@ strictly from `venues.json` facts.
 - Venue data is mocked/synthetic (3 venues: MetLife Stadium, AT&T Stadium, Estadio Azteca) —
   no live FIFA data access.
 - Tested against English, Spanish, Portuguese, and French (`en-US`, `es-ES`, `pt-BR`,
-  `fr-FR`).
+  `fr-FR`). These four are the only languages with a translated escalation-trigger list and
+  translated retrieval keywords — this is the honest scope, not a hidden limitation. Any
+  other language still gets a safety net (the English trigger baseline always applies, and
+  the LLM-assist layer adds semantic judgment for ambiguous cases), but not the same
+  deterministic, dedicated-language keyword coverage. The classifier surfaces this directly:
+  every `/api/query` response includes a `triggerCoverage` field (`"full"` for en/es/pt/fr,
+  `"partial"` for anything else), derived at runtime from the actual languages present in
+  `venues.json`'s `escalationTriggers` rather than a separately hardcoded list, so it can't
+  drift out of sync as languages are added.
 - Voice input/output uses the browser's native Web Speech API; support varies by browser
   (strongest in Chrome-based browsers, limited/unavailable in some others). Both the
   volunteer view and the kiosk view always provide a fully functional text-input fallback —

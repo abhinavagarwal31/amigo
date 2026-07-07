@@ -75,19 +75,21 @@ async function classify(query, retrievedDocs, options = {}) {
 
   const queryTokens = tokenize(query);
   const triggerList = resolveTriggerList(escalationTriggers, language);
+  const triggerCoverage = resolveTriggerCoverage(escalationTriggers, language);
 
   const matchedTrigger = triggerList.find((trigger) => matchesTrigger(queryTokens, trigger));
   if (matchedTrigger) {
     return {
       category: 'ESCALATE',
       confidence: 'high',
-      reason: `matched escalation trigger: "${matchedTrigger}"`
+      reason: `matched escalation trigger: "${matchedTrigger}"`,
+      triggerCoverage
     };
   }
 
   if (retrievedDocs.length > 0 && retrievedDocs[0].score > retrievalThreshold) {
     const category = retrievedDocs[0].type === 'policy' ? 'POLICY' : 'GROUNDED_FACT';
-    return { category, confidence: 'high', reason: 'confident retrieval match' };
+    return { category, confidence: 'high', reason: 'confident retrieval match', triggerCoverage };
   }
 
   if (typeof askLLMToClassify === 'function') {
@@ -96,7 +98,8 @@ async function classify(query, retrievedDocs, options = {}) {
       return {
         category: 'ESCALATE',
         confidence: 'medium',
-        reason: llmJudgment.reasoning || 'LLM flagged as a possible escalation'
+        reason: llmJudgment.reasoning || 'LLM flagged as a possible escalation',
+        triggerCoverage
       };
     }
   }
@@ -104,8 +107,16 @@ async function classify(query, retrievedDocs, options = {}) {
   return {
     category: 'GROUNDED_FACT',
     confidence: 'low',
-    reason: 'no confident retrieval match and no escalation signal'
+    reason: 'no confident retrieval match and no escalation signal',
+    triggerCoverage
   };
 }
 
-module.exports = { classify, DEFAULT_RETRIEVAL_THRESHOLD, normalizeLanguageCode, resolveTriggerList };
+module.exports = {
+  classify,
+  DEFAULT_RETRIEVAL_THRESHOLD,
+  normalizeLanguageCode,
+  resolveTriggerList,
+  getSupportedTriggerLanguages,
+  resolveTriggerCoverage
+};

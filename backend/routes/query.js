@@ -40,6 +40,7 @@ router.post('/', async (req, res) => {
         answer: null,
         category: 'ESCALATE',
         confidence: classification.confidence,
+        triggerCoverage: classification.triggerCoverage,
         sourceDocs: []
       });
     }
@@ -59,6 +60,7 @@ router.post('/', async (req, res) => {
       })),
       category: classification.category,
       confidence: classification.confidence,
+      triggerCoverage: classification.triggerCoverage,
       escalation: false
     });
   } catch (err) {

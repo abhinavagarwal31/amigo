@@ -1,4 +1,8 @@
-const { classify } = require('../services/classifier');
+const {
+  classify,
+  getSupportedTriggerLanguages,
+  resolveTriggerCoverage
+} = require('../services/classifier');
 const { retrieve, loadKnowledgeBase } = require('../services/retriever');
 
 const kb = loadKnowledgeBase();
@@ -131,5 +135,48 @@ describe('classify', () => {
       language: 'es-ES'
     });
     expect(nonMatchResult.category).not.toBe('ESCALATE');
+  });
+
+  test('getSupportedTriggerLanguages is derived from the actual escalationTriggers keys', () => {
+    const supported = getSupportedTriggerLanguages(escalationTriggers);
+    expect(supported.sort()).toEqual(['en', 'es', 'fr', 'pt'].sort());
+  });
+
+  test('resolveTriggerCoverage reports "full" for supported languages and "partial" otherwise', () => {
+    expect(resolveTriggerCoverage(escalationTriggers, 'es-ES')).toBe('full');
+    expect(resolveTriggerCoverage(escalationTriggers, 'en-US')).toBe('full');
+    expect(resolveTriggerCoverage(escalationTriggers, 'de-DE')).toBe('partial');
+    expect(resolveTriggerCoverage(escalationTriggers, undefined)).toBe('full');
+  });
+
+  test('classify() surfaces triggerCoverage on every return path', async () => {
+    const escalateResult = await classify('chest pain', [], { escalationTriggers, language: 'en-US' });
+    expect(escalateResult.triggerCoverage).toBe('full');
+
+    const query = 'where is the nearest accessible restroom';
+    const groundedResult = await classify(query, retrieve(query, { venueId: 'venue_01', kb }), {
+      escalationTriggers,
+      language: 'en-US'
+    });
+    expect(groundedResult.triggerCoverage).toBe('full');
+  });
+
+  test('an unsupported language (e.g. German) degrades gracefully to English-only trigger matching', async () => {
+    // Falls back to the English trigger baseline (no translated German list exists), and
+    // reports that honestly via triggerCoverage — it must not throw or silently match nothing.
+    const result = await classify('medical emergency please help', [], {
+      escalationTriggers,
+      language: 'de-DE'
+    });
+    expect(result.category).toBe('ESCALATE');
+    expect(result.triggerCoverage).toBe('partial');
+  });
+
+  test('an unsupported language with no English trigger words present does not throw and does not escalate', async () => {
+    const query = 'wo ist die nächste toilette';
+    const retrievedDocs = retrieve(query, { venueId: 'venue_01', kb });
+    const result = await classify(query, retrievedDocs, { escalationTriggers, language: 'de-DE' });
+    expect(result.category).not.toBe('ESCALATE');
+    expect(result.triggerCoverage).toBe('partial');
   });
 });
