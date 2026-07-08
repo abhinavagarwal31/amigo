@@ -83,6 +83,10 @@ function japaneseBigrams(text) {
   return bigrams;
 }
 
+// No longer called by retrieve() (superseded by embedding-based cosine similarity), but
+// kept side-by-side and unused-lint-suppressed until semantic retrieval is proven out
+// against real queries — see the semantic-retrieval spec's step 4 cleanup commit.
+// eslint-disable-next-line no-unused-vars
 function scoreBigramOverlap(queryBigrams, docBigrams) {
   if (queryBigrams.size === 0) return 0;
   let matches = 0;
@@ -199,6 +203,10 @@ async function loadKnowledgeBase(kbPath = path.join(__dirname, '..', 'data', 've
   return { ...data, docIndex };
 }
 
+// No longer called by retrieve() (superseded by embedding-based cosine similarity), but
+// kept side-by-side and unused-lint-suppressed until semantic retrieval is proven out
+// against real queries — see the semantic-retrieval spec's step 4 cleanup commit.
+// eslint-disable-next-line no-unused-vars
 function scoreDocTokens(queryTokens, docTokens) {
   let matches = 0;
   for (const token of queryTokens) {
@@ -212,33 +220,39 @@ function stripInternalFields({ tokens, japaneseBigrams: docBigrams, embedding, .
   return doc;
 }
 
-function retrieve(query, options = {}) {
+function cosineSimilarity(a, b) {
+  let dot = 0;
+  let normA = 0;
+  let normB = 0;
+  for (let i = 0; i < a.length; i += 1) {
+    dot += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  if (normA === 0 || normB === 0) return 0;
+  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+// Tuned against the same real-world queries used in earlier live testing (see the
+// RUN_LIVE_TESTS-gated suite) — high enough to reject unrelated docs, low enough that
+// genuine paraphrases of a fact still clear it.
+const SIMILARITY_THRESHOLD = 0.75;
+
+async function retrieve(query, options = {}) {
   const { venueId, topK = 3, kb } = options;
-  const knowledgeBase = kb || loadKnowledgeBase();
+  const knowledgeBase = kb || (await loadKnowledgeBase());
 
   const candidateDocs = venueId
     ? knowledgeBase.docIndex.filter((doc) => doc.venueId === venueId)
     : knowledgeBase.docIndex;
 
-  if (isJapaneseText(query)) {
-    const queryBigrams = japaneseBigrams(query);
-    if (queryBigrams.size === 0) return [];
+  if (!query || query.trim().length === 0) return [];
 
-    const scored = candidateDocs
-      .map((doc) => ({ ...doc, score: scoreBigramOverlap(queryBigrams, doc.japaneseBigrams) }))
-      .filter((doc) => doc.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .map(stripInternalFields);
-
-    return scored.slice(0, topK);
-  }
-
-  const queryTokens = tokenize(query);
-  if (queryTokens.length === 0) return [];
+  const queryEmbedding = await embedText(query);
 
   const scored = candidateDocs
-    .map((doc) => ({ ...doc, score: scoreDocTokens(queryTokens, doc.tokens) }))
-    .filter((doc) => doc.score > 0)
+    .map((doc) => ({ ...doc, score: cosineSimilarity(queryEmbedding, doc.embedding) }))
+    .filter((doc) => doc.score >= SIMILARITY_THRESHOLD)
     .sort((a, b) => b.score - a.score)
     .map(stripInternalFields);
 
@@ -251,5 +265,7 @@ module.exports = {
   tokenize,
   buildDocIndex,
   isJapaneseText,
-  japaneseBigrams
+  japaneseBigrams,
+  cosineSimilarity,
+  SIMILARITY_THRESHOLD
 };

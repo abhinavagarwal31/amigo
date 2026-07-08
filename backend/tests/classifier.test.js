@@ -1,5 +1,5 @@
 jest.mock('../services/llm', () => ({
-  embedText: jest.fn().mockResolvedValue([0.1, 0.2, 0.3])
+  embedText: jest.fn((text) => Promise.resolve(require('./testUtils/fakeEmbeddings').fakeEmbed(text)))
 }));
 
 const {
@@ -26,14 +26,14 @@ describe('classify', () => {
 
   test('escalates even when retrieval finds an unrelated confident match', async () => {
     const query = 'medical help needed near the restroom';
-    const retrievedDocs = retrieve(query, { venueId: 'venue_01', kb });
+    const retrievedDocs = await retrieve(query, { venueId: 'venue_01', kb });
     const result = await classify(query, retrievedDocs, { escalationTriggers });
     expect(result.category).toBe('ESCALATE');
   });
 
   test('returns GROUNDED_FACT for an obvious factual case (restroom location)', async () => {
     const query = 'where is the nearest accessible restroom';
-    const retrievedDocs = retrieve(query, { venueId: 'venue_01', kb });
+    const retrievedDocs = await retrieve(query, { venueId: 'venue_01', kb });
     const result = await classify(query, retrievedDocs, { escalationTriggers });
     expect(result.category).toBe('GROUNDED_FACT');
     expect(result.confidence).toBe('high');
@@ -41,7 +41,7 @@ describe('classify', () => {
 
   test('returns POLICY for an obvious policy case (re-entry rules)', async () => {
     const query = 'what is the re-entry policy';
-    const retrievedDocs = retrieve(query, { venueId: 'venue_01', kb });
+    const retrievedDocs = await retrieve(query, { venueId: 'venue_01', kb });
     const result = await classify(query, retrievedDocs, { escalationTriggers });
     expect(result.category).toBe('POLICY');
     expect(result.confidence).toBe('high');
@@ -49,7 +49,7 @@ describe('classify', () => {
 
   test('exercises the LLM-assist path for an ambiguous case and escalates on its judgment', async () => {
     const query = 'i feel really strange and dizzy all of a sudden';
-    const retrievedDocs = retrieve(query, { venueId: 'venue_01', kb });
+    const retrievedDocs = await retrieve(query, { venueId: 'venue_01', kb });
     const askLLMToClassify = jest.fn().mockResolvedValue({
       category: 'ESCALATE',
       reasoning: 'possible medical distress signal'
@@ -65,7 +65,7 @@ describe('classify', () => {
 
   test('exercises the LLM-assist path and falls back to low-confidence GROUNDED_FACT when LLM does not escalate', async () => {
     const query = 'tell me something about this place';
-    const retrievedDocs = retrieve(query, { venueId: 'venue_01', kb });
+    const retrievedDocs = await retrieve(query, { venueId: 'venue_01', kb });
     const askLLMToClassify = jest.fn().mockResolvedValue({
       category: 'GROUNDED_FACT',
       reasoning: 'general question, no urgency detected'
@@ -101,7 +101,7 @@ describe('classify', () => {
 
   test('classifies a full natural Spanish factual sentence as a confident GROUNDED_FACT', async () => {
     const query = '¿dónde está el baño accesible más cercano?';
-    const retrievedDocs = retrieve(query, { venueId: 'venue_01', kb });
+    const retrievedDocs = await retrieve(query, { venueId: 'venue_01', kb });
     const result = await classify(query, retrievedDocs, { escalationTriggers, language: 'es-ES' });
     expect(result.category).toBe('GROUNDED_FACT');
     expect(result.confidence).toBe('high');
@@ -120,7 +120,7 @@ describe('classify', () => {
 
   test('does NOT escalate on "armario" (closet) even though it contains the substring "arma" (weapon)', async () => {
     const query = 'necesito ir al armario';
-    const retrievedDocs = retrieve(query, { venueId: 'venue_01', kb });
+    const retrievedDocs = await retrieve(query, { venueId: 'venue_01', kb });
     const result = await classify(query, retrievedDocs, { escalationTriggers, language: 'es-ES' });
     expect(result.category).not.toBe('ESCALATE');
   });
@@ -138,7 +138,7 @@ describe('classify', () => {
     expect(matchResult.category).toBe('ESCALATE');
 
     const nonMatchingQuery = 'el dolor de mi pie y el color del pecho de pollo';
-    const retrievedDocs = retrieve(nonMatchingQuery, { venueId: 'venue_01', kb });
+    const retrievedDocs = await retrieve(nonMatchingQuery, { venueId: 'venue_01', kb });
     const nonMatchResult = await classify(nonMatchingQuery, retrievedDocs, {
       escalationTriggers,
       language: 'es-ES'
@@ -164,7 +164,7 @@ describe('classify', () => {
     expect(escalateResult.triggerCoverage).toBe('full');
 
     const query = 'where is the nearest accessible restroom';
-    const groundedResult = await classify(query, retrieve(query, { venueId: 'venue_01', kb }), {
+    const groundedResult = await classify(query, await retrieve(query, { venueId: 'venue_01', kb }), {
       escalationTriggers,
       language: 'en-US'
     });
@@ -184,7 +184,7 @@ describe('classify', () => {
 
   test('an unsupported language with no English trigger words present does not throw and does not escalate', async () => {
     const query = 'waar is het dichtstbijzijnde toilet';
-    const retrievedDocs = retrieve(query, { venueId: 'venue_01', kb });
+    const retrievedDocs = await retrieve(query, { venueId: 'venue_01', kb });
     const result = await classify(query, retrievedDocs, { escalationTriggers, language: 'nl-NL' });
     expect(result.category).not.toBe('ESCALATE');
     expect(result.triggerCoverage).toBe('partial');
@@ -223,7 +223,7 @@ describe('classify', () => {
     // word-boundary-aware matching generalizes correctly to a newly-added language too,
     // rather than needing a fresh per-language patch.
     const query = 'dove è larmadio';
-    const retrievedDocs = retrieve(query, { venueId: 'venue_01', kb });
+    const retrievedDocs = await retrieve(query, { venueId: 'venue_01', kb });
     const result = await classify(query, retrievedDocs, { escalationTriggers, language: 'it-IT' });
     expect(result.category).not.toBe('ESCALATE');
   });

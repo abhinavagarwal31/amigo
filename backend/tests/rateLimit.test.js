@@ -2,7 +2,7 @@ jest.mock('../services/llm', () => ({
   generateAnswer: jest.fn(),
   classifyAmbiguous: jest.fn(),
   generateBriefing: jest.fn(),
-  embedText: jest.fn().mockResolvedValue([0.1, 0.2, 0.3])
+  embedText: jest.fn((text) => Promise.resolve(require('./testUtils/fakeEmbeddings').fakeEmbed(text)))
 }));
 
 const request = require('supertest');

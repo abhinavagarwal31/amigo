@@ -35,7 +35,7 @@ router.post('/', async (req, res) => {
 
   try {
     const kb = await getKnowledgeBase();
-    const retrievedDocs = retrieve(cleanQuery, { venueId, kb });
+    const retrievedDocs = await retrieve(cleanQuery, { venueId, kb });
 
     const classification = await classify(cleanQuery, retrievedDocs, {
       escalationTriggers: kb.escalationTriggers,
