@@ -1,4 +1,4 @@
-const { tokenize } = require('./retriever');
+const { tokenize, isJapaneseText } = require('./retriever');
 
 const DEFAULT_RETRIEVAL_THRESHOLD = 0.5;
 
@@ -29,7 +29,19 @@ function containsTokenSequence(queryTokens, triggerTokens) {
 
 // Both the trigger phrase and the query go through the same tokenizer, so contractions,
 // accents, and stopword handling stay consistent on both sides of the comparison.
-function matchesTrigger(queryTokens, trigger) {
+//
+// Japanese triggers are checked differently: tokenize() strips Japanese characters
+// entirely (no whitespace word segmentation to split on), so token-sequence matching can
+// never work for them. As a simple, honest fallback, a Japanese trigger is matched via
+// substring containment against the raw (whitespace-stripped) query instead. This
+// reintroduces some of the false-positive risk the word-boundary fix eliminated for the
+// other seven languages, but Japanese trigger phrases here are distinctive multi-character
+// sequences rather than single ambiguous words, so the practical risk is much lower — a
+// documented, known limitation rather than a silent one.
+function matchesTrigger(queryTokens, trigger, rawQuery) {
+  if (isJapaneseText(trigger)) {
+    return rawQuery.replace(/\s+/g, '').includes(trigger.replace(/\s+/g, ''));
+  }
   const triggerTokens = tokenize(trigger);
   return containsTokenSequence(queryTokens, triggerTokens);
 }
@@ -77,7 +89,7 @@ async function classify(query, retrievedDocs, options = {}) {
   const triggerList = resolveTriggerList(escalationTriggers, language);
   const triggerCoverage = resolveTriggerCoverage(escalationTriggers, language);
 
-  const matchedTrigger = triggerList.find((trigger) => matchesTrigger(queryTokens, trigger));
+  const matchedTrigger = triggerList.find((trigger) => matchesTrigger(queryTokens, trigger, query));
   if (matchedTrigger) {
     return {
       category: 'ESCALATE',

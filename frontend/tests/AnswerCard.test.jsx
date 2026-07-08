@@ -77,4 +77,36 @@ describe('AnswerCard', () => {
     );
     expect(speak).toHaveBeenCalledTimes(1);
   });
+
+  test('renders the answer right-to-left when the output language is Arabic', () => {
+    mockSpeechSynthesis();
+    render(
+      <AnswerCard
+        response={{
+          answer: 'أقرب دورة مياه متاحة للكراسي المتحركة تقع في الرواق، القسم 214.',
+          category: 'GROUNDED_FACT',
+          confidence: 'high',
+          sourceDocs: []
+        }}
+        outputLanguage="ar-SA"
+      />
+    );
+    expect(screen.getByText(/دورة مياه/)).toHaveAttribute('dir', 'rtl');
+  });
+
+  test('renders the answer left-to-right for a non-RTL language', () => {
+    mockSpeechSynthesis();
+    render(
+      <AnswerCard
+        response={{
+          answer: 'The nearest accessible restroom is at Section 214.',
+          category: 'GROUNDED_FACT',
+          confidence: 'high',
+          sourceDocs: []
+        }}
+        outputLanguage="en-US"
+      />
+    );
+    expect(screen.getByText(/nearest accessible restroom/)).toHaveAttribute('dir', 'ltr');
+  });
 });

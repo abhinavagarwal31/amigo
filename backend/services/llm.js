@@ -133,6 +133,7 @@ module.exports = {
   generateAnswer,
   classifyAmbiguous,
   generateBriefing,
+  getClient,
   SYSTEM_PROMPT,
   BRIEFING_SYSTEM_PROMPT
 };

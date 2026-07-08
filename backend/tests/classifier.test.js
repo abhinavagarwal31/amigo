@@ -139,13 +139,14 @@ describe('classify', () => {
 
   test('getSupportedTriggerLanguages is derived from the actual escalationTriggers keys', () => {
     const supported = getSupportedTriggerLanguages(escalationTriggers);
-    expect(supported.sort()).toEqual(['en', 'es', 'fr', 'pt'].sort());
+    expect(supported.sort()).toEqual(['ar', 'de', 'en', 'es', 'fr', 'it', 'ja', 'pt'].sort());
   });
 
   test('resolveTriggerCoverage reports "full" for supported languages and "partial" otherwise', () => {
     expect(resolveTriggerCoverage(escalationTriggers, 'es-ES')).toBe('full');
     expect(resolveTriggerCoverage(escalationTriggers, 'en-US')).toBe('full');
-    expect(resolveTriggerCoverage(escalationTriggers, 'de-DE')).toBe('partial');
+    expect(resolveTriggerCoverage(escalationTriggers, 'de-DE')).toBe('full');
+    expect(resolveTriggerCoverage(escalationTriggers, 'nl-NL')).toBe('partial');
     expect(resolveTriggerCoverage(escalationTriggers, undefined)).toBe('full');
   });
 
@@ -161,22 +162,60 @@ describe('classify', () => {
     expect(groundedResult.triggerCoverage).toBe('full');
   });
 
-  test('an unsupported language (e.g. German) degrades gracefully to English-only trigger matching', async () => {
-    // Falls back to the English trigger baseline (no translated German list exists), and
+  test('an unsupported language (e.g. Dutch) degrades gracefully to English-only trigger matching', async () => {
+    // Falls back to the English trigger baseline (no translated Dutch list exists), and
     // reports that honestly via triggerCoverage — it must not throw or silently match nothing.
     const result = await classify('medical emergency please help', [], {
       escalationTriggers,
-      language: 'de-DE'
+      language: 'nl-NL'
     });
     expect(result.category).toBe('ESCALATE');
     expect(result.triggerCoverage).toBe('partial');
   });
 
   test('an unsupported language with no English trigger words present does not throw and does not escalate', async () => {
-    const query = 'wo ist die nächste toilette';
+    const query = 'waar is het dichtstbijzijnde toilet';
     const retrievedDocs = retrieve(query, { venueId: 'venue_01', kb });
-    const result = await classify(query, retrievedDocs, { escalationTriggers, language: 'de-DE' });
+    const result = await classify(query, retrievedDocs, { escalationTriggers, language: 'nl-NL' });
     expect(result.category).not.toBe('ESCALATE');
     expect(result.triggerCoverage).toBe('partial');
+  });
+
+  test('escalates a German medical-emergency phrase using the German trigger list', async () => {
+    const result = await classify('ich habe Brustschmerzen', [], { escalationTriggers, language: 'de-DE' });
+    expect(result.category).toBe('ESCALATE');
+    expect(result.confidence).toBe('high');
+    expect(result.triggerCoverage).toBe('full');
+  });
+
+  test('escalates an Italian medical-emergency phrase using the Italian trigger list', async () => {
+    const result = await classify('ho un forte dolore al petto', [], { escalationTriggers, language: 'it-IT' });
+    expect(result.category).toBe('ESCALATE');
+    expect(result.confidence).toBe('high');
+    expect(result.triggerCoverage).toBe('full');
+  });
+
+  test('escalates an Arabic medical-emergency phrase using the Arabic trigger list', async () => {
+    const result = await classify('لدي ألم في الصدر', [], { escalationTriggers, language: 'ar-SA' });
+    expect(result.category).toBe('ESCALATE');
+    expect(result.confidence).toBe('high');
+    expect(result.triggerCoverage).toBe('full');
+  });
+
+  test('escalates a Japanese medical-emergency phrase using the Japanese trigger list', async () => {
+    const result = await classify('友達が息ができない', [], { escalationTriggers, language: 'ja-JP' });
+    expect(result.category).toBe('ESCALATE');
+    expect(result.confidence).toBe('high');
+    expect(result.triggerCoverage).toBe('full');
+  });
+
+  test('does NOT escalate on Italian "armadio" (wardrobe) even though it contains the substring "arma" (weapon)', async () => {
+    // Same class of risk as the original Spanish "arma"/"armario" bug — proves the
+    // word-boundary-aware matching generalizes correctly to a newly-added language too,
+    // rather than needing a fresh per-language patch.
+    const query = 'dove è larmadio';
+    const retrievedDocs = retrieve(query, { venueId: 'venue_01', kb });
+    const result = await classify(query, retrievedDocs, { escalationTriggers, language: 'it-IT' });
+    expect(result.category).not.toBe('ESCALATE');
   });
 });

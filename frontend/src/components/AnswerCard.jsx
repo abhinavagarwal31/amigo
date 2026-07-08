@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
+import { getLanguageDir } from '../constants';
 
 export function AnswerCard({ response, outputLanguage }) {
   const { isSupported, isSpeaking, speak, stop } = useSpeechSynthesis();
@@ -14,10 +15,14 @@ export function AnswerCard({ response, outputLanguage }) {
 
   if (!response || response.escalation) return null;
 
+  const textDir = getLanguageDir(outputLanguage);
+
   return (
     <section aria-labelledby="answer-heading" className="answer-card">
       <h2 id="answer-heading">Answer</h2>
-      <p className="answer-text">{response.answer}</p>
+      <p className="answer-text" dir={textDir}>
+        {response.answer}
+      </p>
       <p className="answer-meta">
         Category: {response.category} · Confidence: {response.confidence}
       </p>

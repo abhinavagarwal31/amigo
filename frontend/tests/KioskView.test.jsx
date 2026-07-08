@@ -190,6 +190,30 @@ describe('KioskView', () => {
     expect(screen.queryByText(/matched escalation trigger/i)).not.toBeInTheDocument();
   });
 
+  test('renders the escalation screen right-to-left when Arabic is the selected language', async () => {
+    mockFetchOnce(200, {
+      answer: null,
+      category: 'ESCALATE',
+      confidence: 'high',
+      escalation: true,
+      reason: 'matched escalation trigger: "طبية"',
+      action: 'Notify on-site medical/security team immediately.',
+      sourceDocs: []
+    });
+
+    render(<KioskView />);
+    fireEvent.click(screen.getByRole('button', { name: 'العربية' }));
+    fireEvent.click(screen.getByRole('button', { name: /tap to speak/i }));
+
+    const instance = FakeSpeechRecognition.instances[0];
+    await act(async () => {
+      instance.onresult({ results: [[{ transcript: 'حالة طبية طارئة' }]] });
+    });
+
+    const alertRegion = await screen.findByRole('alert');
+    expect(alertRegion).toHaveAttribute('dir', 'rtl');
+  });
+
   test('the Alert Nearby Staff button posts to /api/alert and then shows acknowledgement', async () => {
     mockFetchOnce(200, {
       answer: null,

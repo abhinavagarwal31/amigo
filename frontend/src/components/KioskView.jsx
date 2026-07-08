@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
-import { VENUES, LANGUAGES } from '../constants';
+import { VENUES, LANGUAGES, getLanguageDir } from '../constants';
 import { fetchWithTimeout } from '../fetchWithTimeout';
 
 const INACTIVITY_TIMEOUT_MS = 15000;
@@ -40,6 +40,32 @@ const KIOSK_ESCALATION_TEXT = {
     body: 'Veuillez trouver le membre du personnel le plus proche immédiatement, ou utilisez le bouton ci-dessous pour alerter le personnel.',
     alertButton: 'Alerter le personnel à proximité',
     alertSent: 'Personnel alerté'
+  },
+  'de-DE': {
+    heading: 'Dies könnte dringende Hilfe erfordern',
+    body: 'Bitte finden Sie sofort das nächste Personal, oder nutzen Sie die Schaltfläche unten, um das Personal zu alarmieren.',
+    alertButton: 'Personal in der Nähe alarmieren',
+    alertSent: 'Personal alarmiert'
+  },
+  'it-IT': {
+    heading: 'Questo potrebbe richiedere assistenza urgente',
+    body: "Per favore trova subito il membro dello staff più vicino, oppure usa il pulsante qui sotto per avvisare lo staff.",
+    alertButton: 'Avvisa lo staff vicino',
+    alertSent: 'Staff avvisato'
+  },
+  // Reviewed to the best of non-native confidence, same caveat as the Arabic trigger list
+  // in venues.json — worth a native-speaker check before a real deployment.
+  'ar-SA': {
+    heading: 'قد يتطلب هذا مساعدة عاجلة',
+    body: 'يرجى العثور على أقرب موظف فورًا، أو استخدم الزر أدناه لتنبيه الموظفين.',
+    alertButton: 'تنبيه الموظفين القريبين',
+    alertSent: 'تم تنبيه الموظفين'
+  },
+  'ja-JP': {
+    heading: '緊急の対応が必要な場合があります',
+    body: '至急、最寄りのスタッフを見つけるか、下のボタンでスタッフに知らせてください。',
+    alertButton: '近くのスタッフに知らせる',
+    alertSent: 'スタッフに通知しました'
   }
 };
 
@@ -254,7 +280,7 @@ export function KioskView() {
   if (response && response.escalation) {
     const kioskText = getKioskEscalationText(language);
     return (
-      <main className="kiosk kiosk--escalation" role="alert">
+      <main className="kiosk kiosk--escalation" role="alert" dir={getLanguageDir(language)}>
         <h1>{kioskText.heading}</h1>
         <p>{kioskText.body}</p>
         <button
@@ -273,7 +299,7 @@ export function KioskView() {
   }
 
   return (
-    <main className="kiosk kiosk--responding">
+    <main className="kiosk kiosk--responding" dir={getLanguageDir(language)}>
       <h1>Answer</h1>
       <p className="kiosk-answer-text">{response && response.answer}</p>
       <button type="button" onClick={resetSession}>

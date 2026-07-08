@@ -1,0 +1,166 @@
+{
+  "_note": "Human-reviewed, corrected version of language-drafts.json (the raw Gemini output). This is the file actually merged into backend/data/venues.json and backend/services/retriever.js. See README's 'Expanding Language Coverage' section for the corrections made and why.",
+  "de": {
+    "language": "German",
+    "code": "de",
+    "triggers": [
+      "medizinischer Notfall",
+      "Verletzung",
+      "Brustschmerzen",
+      "bewusstlos",
+      "kann nicht atmen",
+      "atmet nicht",
+      "verlorenes Kind",
+      "vermisstes Kind",
+      "Belästigung",
+      "Übergriff",
+      "Bedrohung",
+      "Waffe",
+      "Schusswaffe",
+      "Messer",
+      "Feuer",
+      "Rauch",
+      "Evakuierung",
+      "Bombe"
+    ],
+    "keywords": {
+      "restroom": "Toilette WC Badezimmer",
+      "gate": "Tor Eingang",
+      "wheelchairAccessible": "barrierefrei rollstuhlgerecht",
+      "transit": "ÖPNV Zug Bus U-Bahn letzte Abfahrt",
+      "policy": "Regeln",
+      "gateStatusOpen": "offen",
+      "gateStatusClosed": "geschlossen",
+      "gateStatusRestricted": "eingeschränkt",
+      "gateStatusDelayed": "verspätet"
+    },
+    "reviewNotes": [
+      "Deduped 'kann nicht atmen', which the draft repeated (mirroring the English list's \"can't breathe\"/\"cant breathe\" apostrophe-variant duplication, which doesn't carry over meaningfully once translated).",
+      "Replaced 'Angriff' (assault) with 'Übergriff': 'Angriff' is also the standard German football term for an attacking play, so a fan commentating on the match would falsely trigger an escalation.",
+      "Fixed all multi-word keyword strings, which the raw draft returned with no spaces between words (e.g. 'ToiletteWCBadezimmer'), making them unmatchable against any real tokenized query.",
+      "Corrected 'transit' keywords: the raw draft included 'Fahrrad' (bicycle), which doesn't fit the intended 'train' category — replaced with 'Zug' (train)."
+    ]
+  },
+  "it": {
+    "language": "Italian",
+    "code": "it",
+    "triggers": [
+      "medico",
+      "ferita",
+      "dolore al petto",
+      "incosciente",
+      "non respiro",
+      "non respira",
+      "bambino perso",
+      "bambina persa",
+      "bambino smarrito",
+      "bambina smarrita",
+      "molestie",
+      "aggressione",
+      "minaccia",
+      "arma",
+      "pistola",
+      "coltello",
+      "fuoco",
+      "fumo",
+      "evacuazione",
+      "bomba"
+    ],
+    "keywords": {
+      "restroom": "bagno toilette servizi",
+      "gate": "cancello varco porta",
+      "wheelchairAccessible": "accessibile sedia a rotelle",
+      "transit": "trasporti treno bus metro ultima corsa",
+      "policy": "regolamento",
+      "gateStatusOpen": "aperto",
+      "gateStatusClosed": "chiuso",
+      "gateStatusRestricted": "limitato",
+      "gateStatusDelayed": "ritardo"
+    },
+    "reviewNotes": [
+      "Deduped 'non respiro', which the draft repeated (same apostrophe-variant artifact as German).",
+      "Added feminine 'bambina persa'/'bambina smarrita' — the draft only had masculine 'bambino' forms; Spanish/Portuguese in the existing data already carry both genders for this trigger.",
+      "'arma' (weapon) is a substring of 'armadio' (wardrobe/closet) — the same class of risk as the original Spanish 'arma'/'armario' bug. No fix needed here: the word-boundary-aware token matching already handles this correctly for any language, since 'arma' and 'armadio' are distinct tokens. Added a regression test to lock this in explicitly for Italian too."
+    ]
+  },
+  "ar": {
+    "language": "Arabic",
+    "code": "ar",
+    "triggers": [
+      "طبية",
+      "إصابة",
+      "ألم في الصدر",
+      "فاقد الوعي",
+      "لا أستطيع التنفس",
+      "مشكلة في التنفس",
+      "لا يتنفس",
+      "طفل ضائع",
+      "طفلة مفقودة",
+      "تحرش",
+      "اعتداء",
+      "تهديد",
+      "سلاح",
+      "مسدس",
+      "سكين",
+      "حريق",
+      "دخان",
+      "إخلاء",
+      "قنبلة"
+    ],
+    "keywords": {
+      "restroom": "دورة مياه حمام مرحاض",
+      "gate": "بوابة مدخل",
+      "wheelchairAccessible": "متاح للكراسي المتحركة",
+      "transit": "مواصلات قطار حافلة مترو آخر رحلة",
+      "policy": "سياسة",
+      "gateStatusOpen": "مفتوح",
+      "gateStatusClosed": "مغلق",
+      "gateStatusRestricted": "مقيد",
+      "gateStatusDelayed": "متأخر"
+    },
+    "reviewNotes": [
+      "Not corrected, but flagged as an open question for a native speaker: 'طبية' is the feminine adjective form of \"medical\" and may not catch masculine-form phrasings of the same concept. Reviewed to the best of non-native confidence; everything else in this list reads as natural and correctly gendered (e.g. 'طفل ضائع'/'طفلة مفقودة' already covers both genders for lost/missing child)."
+    ]
+  },
+  "ja": {
+    "language": "Japanese",
+    "code": "ja",
+    "triggers": [
+      "具合が悪い",
+      "怪我",
+      "胸が痛い",
+      "意識がない",
+      "息ができない",
+      "息が苦しい",
+      "呼吸してない",
+      "子供がいなくなった",
+      "子供が迷子",
+      "迷惑行為",
+      "暴行",
+      "脅迫",
+      "武器",
+      "銃",
+      "ナイフ",
+      "火事",
+      "煙",
+      "避難",
+      "爆弾"
+    ],
+    "keywords": {
+      "restroom": "トイレ お手洗い",
+      "gate": "ゲート 入口",
+      "wheelchairAccessible": "車椅子 バリアフリー",
+      "transit": "電車 バス 地下鉄 終電",
+      "policy": "ルール",
+      "gateStatusOpen": "開場",
+      "gateStatusClosed": "閉場",
+      "gateStatusRestricted": "入場制限",
+      "gateStatusDelayed": "遅延"
+    },
+    "reviewNotes": [
+      "Fixed a real mistranslation: the draft's '子供がいない' literally means \"I don't have children\" (an entirely ordinary thing to say, e.g. when asking about family ticket policies) — not \"lost child\". Replaced with '子供がいなくなった' (the child has gone missing/disappeared), distinct from the adjacent, correctly-translated '子供が迷子' (the child is lost).",
+      "Stripped the romanized readings the draft appended in parentheses (e.g. '(guai ga warui)') — useful for a non-Japanese-fluent reviewer, but a real query won't contain the romaji, so keeping it in the stored trigger would prevent any match at all.",
+      "Japanese has no whitespace word segmentation, so unlike the other three languages, exact whitespace-token matching cannot work here at all — see the character-level fallback and its documented limitations in retriever.js and classifier.js."
+    ]
+  }
+}

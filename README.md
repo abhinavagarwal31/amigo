@@ -80,16 +80,27 @@ strictly from `venues.json` facts.
 
 - Venue data is mocked/synthetic (3 venues: MetLife Stadium, AT&T Stadium, Estadio Azteca) —
   no live FIFA data access.
-- Tested against English, Spanish, Portuguese, and French (`en-US`, `es-ES`, `pt-BR`,
-  `fr-FR`). These four are the only languages with a translated escalation-trigger list and
-  translated retrieval keywords — this is the honest scope, not a hidden limitation. Any
-  other language still gets a safety net (the English trigger baseline always applies, and
-  the LLM-assist layer adds semantic judgment for ambiguous cases), but not the same
-  deterministic, dedicated-language keyword coverage. The classifier surfaces this directly:
-  every `/api/query` response includes a `triggerCoverage` field (`"full"` for en/es/pt/fr,
-  `"partial"` for anything else), derived at runtime from the actual languages present in
-  `venues.json`'s `escalationTriggers` rather than a separately hardcoded list, so it can't
-  drift out of sync as languages are added.
+- Tested against eight languages with full deterministic trigger/keyword coverage: English,
+  Spanish, Portuguese, French, German, Italian, Arabic, and Japanese (`en-US`, `es-ES`,
+  `pt-BR`, `fr-FR`, `de-DE`, `it-IT`, `ar-SA`, `ja-JP`). These are the only languages with a
+  translated escalation-trigger list and translated retrieval keywords — this is the honest
+  scope, not a hidden limitation. Any other language still gets a safety net (the English
+  trigger baseline always applies, and the LLM-assist layer adds semantic judgment for
+  ambiguous cases), but not the same deterministic, dedicated-language keyword coverage. The
+  classifier surfaces this directly: every `/api/query` response includes a `triggerCoverage`
+  field (`"full"` for the eight listed above, `"partial"` for anything else), derived at
+  runtime from the actual languages present in `venues.json`'s `escalationTriggers` — via
+  `getSupportedTriggerLanguages()`, `Object.keys(escalationTriggers)` — rather than a
+  separately hardcoded list, so it can't drift out of sync as languages are added.
+  Two of the eight have documented, narrower caveats (see "Expanding Language Coverage"
+  below for the full methodology and reasoning): Japanese has no whitespace word
+  segmentation, so retrieval and trigger matching fall back to character-bigram/substring
+  comparison instead of the word-token matching the other seven languages use — lower
+  precision, not equivalent quality, and said so plainly rather than silently. Arabic's
+  definite article attaches as a prefix to the noun itself (unlike a separate word such as
+  Spanish "el"), which is handled for the common case, but Arabic's fuller set of attached
+  prefixes (e.g. the "with"/"by" preposition) isn't — an honest, partial fix, not a full
+  morphological analyzer.
 - Voice input/output uses the browser's native Web Speech API; support varies by browser
   (strongest in Chrome-based browsers, limited/unavailable in some others). Both the
   volunteer view and the kiosk view always provide a fully functional text-input fallback —
@@ -123,6 +134,71 @@ strictly from `venues.json` facts.
   20-req/minute rate limiter. Budget for this before a live demo — either test conservatively
   or use a paid-tier key.
 
+## Expanding Language Coverage
+
+Amigo's four newest fully-supported languages (German, Italian, Arabic, Japanese) were added
+using the same safety principle that governs the rest of the system: **GenAI drafts, a human
+verifies, only then does it touch production data.** This is worth stating plainly — using
+generative AI to help build the safety infrastructure itself, under mandatory human
+verification, is a deliberate design choice, not a shortcut.
+
+The process, runnable again for any future language via `node scripts/generate-language-drafts.js`:
+
+1. **Draft.** A standalone, offline script (not part of the running app, not wired into any
+   route) asks Gemini to translate the existing English escalation-trigger phrases and
+   retrieval-keyword categories into each target language's natural, commonly-used
+   equivalents — not stiff word-for-word translations. Output goes to a draft file
+   (`scripts/output/language-drafts.json`), never consumed at runtime.
+2. **Human review — mandatory, not automated away.** Every trigger phrase was checked by
+   hand before merging, and this pass caught real, concrete problems a purely automated
+   pipeline would have shipped silently:
+   - **German:** the raw draft's multi-word keyword strings had no spaces between words
+     (e.g. `"ToiletteWCBadezimmer"`), which would have made them unmatchable against any
+     real query — a formatting bug, not a translation error.
+   - **German again:** the drafted "assault" trigger was `"Angriff"`, which is also the
+     standard German football term for an attacking play — a fan commentating on the match
+     would have falsely triggered an escalation. Replaced with `"Übergriff"`, the more
+     precise term for interpersonal assault.
+   - **Italian:** the lost/missing-child triggers only had the masculine `"bambino"` form;
+     added the feminine `"bambina"` variant to match the gender coverage Spanish/Portuguese
+     already had.
+   - **Japanese:** one literal mistranslation — the draft's phrase for "lost child" actually
+     means "I don't have children," an entirely ordinary thing to say when asking about
+     family ticket policies, not an emergency. Fixed to the correct term, distinct from the
+     adjacent (correctly-translated) entry using the standard word for a lost child.
+   - **Arabic:** one open question flagged rather than force-corrected — a feminine adjective
+     form that may not catch masculine-form phrasings of the same concept, noted honestly as
+     an item worth a native speaker's review rather than guessed at.
+
+   The reviewed corrections and reasoning are recorded in
+   `scripts/output/language-drafts.reviewed.json` alongside the raw draft, so the diff
+   between "what GenAI produced" and "what shipped" stays visible and auditable.
+3. **Merge.** Only the reviewed, corrected content was added to `venues.json`'s
+   `escalationTriggers` and `retriever.js`'s keyword constants — the same structure the
+   original four languages already used. No classifier code changes were needed:
+   `triggerCoverage` already derived itself from whatever language keys exist in the data.
+4. **Harden the tokenizer itself.** Merging real Arabic and Japanese text surfaced two
+   deeper bugs in the retrieval/matching layer, not just the translated word lists:
+   - The tokenizer's regex only preserved Latin-script characters, so Arabic text was
+     **silently erased entirely** before this fix — not lower-quality matching, zero
+     matching. Fixed by extending the preserved character range.
+   - Arabic's definite article attaches directly as a prefix to the noun (unlike Spanish
+     "el" or French "le", which are separate words), so a query using the article
+     naturally wouldn't match a keyword list written without it. Fixed with a standard,
+     well-established Arabic text-processing technique (definite-article stripping) — not
+     a project-specific hack.
+   - Japanese has no whitespace word segmentation at all, so word-token matching cannot
+     work for it regardless of translation quality. Rather than pretending otherwise, both
+     retrieval and trigger matching fall back to character-bigram overlap / substring
+     containment for Japanese specifically — documented above as a real, lower-precision
+     limitation.
+
+This is the intended shape of the process for adding the *next* language too: draft with
+GenAI, review by hand (flagging genuine uncertainty rather than guessing), merge only what
+survived review, and treat "does the tokenizer even handle this script" as its own
+verification step — translation quality and matching-infrastructure correctness are two
+different risks, and both showed up here.
+
 ## Running Locally
 
 ```bash
@@ -145,13 +221,14 @@ npm run lint           # ESLint, including eslint-plugin-jsx-a11y
 npm run build:frontend # production Vite build
 ```
 
-Expected `npm test` output: 13 test suites, 83 tests, all passing — covering retrieval
-accuracy (including multilingual and word-boundary edge cases), escalation classification
-(medical/factual/policy/ambiguous cases across en/es/pt/fr, plus fail-closed behavior on a
-parse/network failure), the full `/api/query` and `/api/briefing` pipelines (with Gemini
-mocked), CORS restriction, rate limiting, the staff-alert endpoint, and frontend component
-behavior (`AnswerCard`, `VoiceInputButton`, `EscalationBanner`, `KioskView`'s full state
-machine, and fetch-timeout handling).
+Expected `npm test` output: 13 test suites, 95 tests, all passing — covering retrieval
+accuracy (including multilingual, word-boundary, and script-specific edge cases across all
+eight fully-supported languages), escalation classification (medical/factual/policy/ambiguous
+cases across en/es/pt/fr/de/it/ar/ja, plus fail-closed behavior on a parse/network failure),
+the full `/api/query` and `/api/briefing` pipelines (with Gemini mocked), CORS restriction,
+rate limiting, the staff-alert endpoint, and frontend component behavior (`AnswerCard`,
+`VoiceInputButton`, `EscalationBanner`, `KioskView`'s full state machine, fetch-timeout
+handling, and right-to-left rendering for Arabic).
 
 ### Optional: live API verification
 

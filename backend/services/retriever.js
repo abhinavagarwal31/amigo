@@ -21,36 +21,99 @@ const STOPWORDS = new Set([
   'mais', 'perto', 'próximo', 'próxima', 'proximo', 'proxima',
   // French
   'une', 'le', 'les', 'du', 'des', 'et', 'où', 'quand', 'comment', 'peut', 'puis',
-  'plus', 'proche', 'près', 'pres'
+  'plus', 'proche', 'près', 'pres',
+  // German
+  'der', 'die', 'das', 'ein', 'eine', 'ist', 'sind', 'wo', 'wann', 'was', 'wie',
+  'kann', 'nächste', 'nächster', 'nächstes', 'und', 'zu', 'gibt', 'es',
+  // Italian
+  'il', 'lo', 'i', 'gli', 'uno', 'è', 'sono', 'dove', 'quando', 'cosa', 'come',
+  'posso', 'può', 'più', 'vicino', 'vicina', 'e',
+  // Arabic — reviewed to the best of non-native confidence; flagged in the README as an
+  // area where a native speaker's review would carry more weight than the other languages.
+  'أين', 'متى', 'كيف', 'ماذا', 'ما', 'هل', 'أقرب', 'يمكن', 'يمكنني', 'و'
 ]);
+
+// Arabic's definite article ("the") attaches directly as a prefix to the noun itself
+// (\u0627\u0644, "al-") rather than appearing as a separate word the way Spanish "el" or
+// French "le" do — so "alHammam" ("the bathroom") and "Hammam" ("bathroom") are different
+// tokens under exact matching unless this prefix is stripped first. This is a standard,
+// well-established Arabic text-processing technique (not a project-specific hack).
+const ARABIC_DEFINITE_ARTICLE = '\u0627\u0644';
+
+function stripArabicDefiniteArticle(token) {
+  if (token.length > ARABIC_DEFINITE_ARTICLE.length && token.startsWith(ARABIC_DEFINITE_ARTICLE)) {
+    return token.slice(ARABIC_DEFINITE_ARTICLE.length);
+  }
+  return token;
+}
 
 function tokenize(text) {
   return text
     .toLowerCase()
-    .replace(/[^a-z0-9À-ÿ\s]/gi, ' ')
+    .replace(/[^a-z0-9À-ÿ\u0600-\u06FF\s]/gi, ' ')
     .split(/\s+/)
+    .map(stripArabicDefiniteArticle)
     .filter((token) => token.length > 0 && !STOPWORDS.has(token));
 }
 
-// Multilingual keyword expansions for each document category, so a Spanish/Portuguese/
-// French query can retrieve the same (English-authored) fact doc. These are fixed keyword
+// Japanese (and CJK generally) has no whitespace word segmentation, so the whitespace-split
+// tokenizer above cannot produce meaningful tokens for it — worse, its regex strips Japanese
+// characters entirely (they fall outside a-z0-9À-ÿ), silently discarding them. Detected here
+// so retrieve()/matchesTrigger() can route Japanese text through a different, honestly
+// lower-precision fallback instead of a real tokenizer/morphological analyzer.
+// Hiragana (U+3040-309F) + Katakana (U+30A0-30FF) + CJK Unified Ideographs / Kanji (U+4E00-9FFF).
+const JAPANESE_CHAR_REGEX = /[\u3040-\u30FF\u4E00-\u9FFF]/;
+
+function isJapaneseText(text) {
+  return JAPANESE_CHAR_REGEX.test(text);
+}
+
+// Simple, honest fallback for Japanese: character bigram overlap instead of token overlap.
+// This is lower-precision than the token-based approach used for the other seven supported
+// languages (en/es/pt/fr/de/it/ar) — it can't distinguish word boundaries, so it's more
+// prone to partial/spurious matches on shared character sequences. Documented as a known
+// limitation in the README rather than silently shipped as equivalent-quality retrieval.
+function japaneseBigrams(text) {
+  const cleaned = text.replace(/\s+/g, '');
+  const bigrams = new Set();
+  for (let i = 0; i < cleaned.length - 1; i += 1) {
+    bigrams.add(cleaned.slice(i, i + 2));
+  }
+  return bigrams;
+}
+
+function scoreBigramOverlap(queryBigrams, docBigrams) {
+  if (queryBigrams.size === 0) return 0;
+  let matches = 0;
+  for (const bigram of queryBigrams) {
+    if (docBigrams.has(bigram)) matches += 1;
+  }
+  return matches / queryBigrams.size;
+}
+
+// Multilingual keyword expansions for each document category, so a query in any supported
+// language can retrieve the same (English-authored) fact doc. These are fixed keyword
 // synonyms added to searchText only — they never touch the underlying fact text/data, so
-// the LLM still only ever sees the original, versioned venue facts.
-const RESTROOM_KEYWORDS = 'restroom bathroom toilet baño banheiro toilettes';
-const GATE_KEYWORDS = 'gate puerta portão porte';
+// the LLM still only ever sees the original, versioned venue facts. Japanese entries are
+// included here too (harmlessly stripped by tokenize() for the other languages' matching,
+// but present in the raw searchText that Japanese bigram scoring reads directly).
+const RESTROOM_KEYWORDS =
+  'restroom bathroom toilet baño banheiro toilettes Toilette WC Badezimmer bagno servizi دورة مياه حمام مرحاض トイレ お手洗い';
+const GATE_KEYWORDS = 'gate puerta portão porte Tor Eingang cancello varco porta بوابة مدخل ゲート 入口';
 const WHEELCHAIR_KEYWORDS =
-  'wheelchair accessible silla de ruedas accesible cadeira de rodas acessível fauteuil roulant accessible';
-const TRANSIT_KEYWORDS = 'transit train bus metro tren autobús trem ônibus métro last departure última salida última partida dernier départ';
-const POLICY_KEYWORDS = 'policy política politica';
+  'wheelchair accessible silla de ruedas accesible cadeira de rodas acessível fauteuil roulant accessible barrierefrei rollstuhlgerecht sedia a rotelle متاح للكراسي المتحركة 車椅子 バリアフリー';
+const TRANSIT_KEYWORDS =
+  'transit train bus metro tren autobús trem ônibus métro last departure última salida última partida dernier départ ÖPNV Zug U-Bahn letzte Abfahrt trasporti treno ultima corsa مواصلات قطار حافلة آخر رحلة 電車 地下鉄 終電';
+const POLICY_KEYWORDS = 'policy política politica Regeln regolamento سياسة ルール';
 // Extension point: if venues.json ever uses a gate status value not listed here, add its
-// four-language keyword entry too. An unmapped status still degrades safely — buildDocs()
+// per-language keyword entry too. An unmapped status still degrades safely — buildDocs()
 // falls back to the raw status string below — but it loses the translated-keyword boost
 // for non-English queries until it's added here.
 const GATE_STATUS_KEYWORDS = {
-  open: 'open abierto aberto ouvert',
-  closed: 'closed cerrado fechado fermé',
-  restricted: 'restricted restringido restrito restreint',
-  delayed: 'delayed retrasado atrasado retardé'
+  open: 'open abierto aberto ouvert offen aperto مفتوح 開場',
+  closed: 'closed cerrado fechado fermé geschlossen chiuso مغلق 閉場',
+  restricted: 'restricted restringido restrito restreint eingeschränkt limitato مقيد 入場制限',
+  delayed: 'delayed retrasado atrasado retardé verspätet ritardo متأخر 遅延'
 };
 
 function buildDocs(venue) {
@@ -108,10 +171,14 @@ function buildDocs(venue) {
   return docs;
 }
 
-// Precomputes each doc's token set once, at knowledge-base-load time, rather than
-// re-tokenizing every document's searchText on every retrieve() call.
+// Precomputes each doc's token set AND Japanese bigram set once, at knowledge-base-load
+// time, rather than recomputing either on every retrieve() call.
 function buildDocIndex(venue) {
-  return buildDocs(venue).map((doc) => ({ ...doc, tokens: new Set(tokenize(doc.searchText)) }));
+  return buildDocs(venue).map((doc) => ({
+    ...doc,
+    tokens: new Set(tokenize(doc.searchText)),
+    japaneseBigrams: japaneseBigrams(doc.searchText)
+  }));
 }
 
 function loadKnowledgeBase(kbPath = path.join(__dirname, '..', 'data', 'venues.json')) {
@@ -129,25 +196,49 @@ function scoreDocTokens(queryTokens, docTokens) {
   return matches === 0 ? 0 : matches / queryTokens.length;
 }
 
+// eslint-disable-next-line no-unused-vars
+function stripInternalFields({ tokens, japaneseBigrams: docBigrams, ...doc }) {
+  return doc;
+}
+
 function retrieve(query, options = {}) {
   const { venueId, topK = 3, kb } = options;
   const knowledgeBase = kb || loadKnowledgeBase();
-  const queryTokens = tokenize(query);
-
-  if (queryTokens.length === 0) return [];
 
   const candidateDocs = venueId
     ? knowledgeBase.docIndex.filter((doc) => doc.venueId === venueId)
     : knowledgeBase.docIndex;
 
+  if (isJapaneseText(query)) {
+    const queryBigrams = japaneseBigrams(query);
+    if (queryBigrams.size === 0) return [];
+
+    const scored = candidateDocs
+      .map((doc) => ({ ...doc, score: scoreBigramOverlap(queryBigrams, doc.japaneseBigrams) }))
+      .filter((doc) => doc.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .map(stripInternalFields);
+
+    return scored.slice(0, topK);
+  }
+
+  const queryTokens = tokenize(query);
+  if (queryTokens.length === 0) return [];
+
   const scored = candidateDocs
     .map((doc) => ({ ...doc, score: scoreDocTokens(queryTokens, doc.tokens) }))
     .filter((doc) => doc.score > 0)
     .sort((a, b) => b.score - a.score)
-    // eslint-disable-next-line no-unused-vars
-    .map(({ tokens, ...doc }) => doc);
+    .map(stripInternalFields);
 
   return scored.slice(0, topK);
 }
 
-module.exports = { retrieve, loadKnowledgeBase, tokenize, buildDocIndex };
+module.exports = {
+  retrieve,
+  loadKnowledgeBase,
+  tokenize,
+  buildDocIndex,
+  isJapaneseText,
+  japaneseBigrams
+};

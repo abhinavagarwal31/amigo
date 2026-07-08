@@ -135,4 +135,31 @@ describe('retriever', () => {
     // present and the gate is still indexed/retrievable — not silently dropped.
     expect(results[0].text).toMatch(/staff-only/);
   });
+
+  test('finds the accessible restroom for a German query', () => {
+    const results = retrieve('wo ist die nächste barrierefreie toilette', { venueId: 'venue_01', kb });
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0].type).toBe('restroom');
+    expect(results[0].text).toMatch(/Section 214/);
+  });
+
+  test('finds the accessible restroom for an Italian query', () => {
+    const results = retrieve('dove si trova il bagno accessibile', { venueId: 'venue_01', kb });
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0].type).toBe('restroom');
+    expect(results[0].text).toMatch(/Section 214/);
+  });
+
+  test('finds the accessible restroom for an Arabic query, including with the definite article attached', () => {
+    const results = retrieve('أين الحمام المتاح للكراسي المتحركة', { venueId: 'venue_01', kb });
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0].type).toBe('restroom');
+    expect(results[0].text).toMatch(/Section 214/);
+  });
+
+  test('finds the accessible restroom for a Japanese query via the bigram fallback', () => {
+    const results = retrieve('トイレはどこですか', { venueId: 'venue_01', kb });
+    expect(results.length).toBeGreaterThan(0);
+    expect(results[0].type).toBe('restroom');
+  });
 });

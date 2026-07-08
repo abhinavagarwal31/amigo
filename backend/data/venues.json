@@ -87,6 +87,34 @@
       "enfant perdu", "enfant perdue",
       "harcèlement", "agression", "menace", "arme", "pistolet", "couteau",
       "incendie", "fumée", "évacuation", "bombe"
+    ],
+    "de": [
+      "medizinischer Notfall", "Verletzung", "Brustschmerzen", "bewusstlos",
+      "kann nicht atmen", "atmet nicht",
+      "verlorenes Kind", "vermisstes Kind",
+      "Belästigung", "Übergriff", "Bedrohung", "Waffe", "Schusswaffe", "Messer",
+      "Feuer", "Rauch", "Evakuierung", "Bombe"
+    ],
+    "it": [
+      "medico", "ferita", "dolore al petto", "incosciente",
+      "non respiro", "non respira",
+      "bambino perso", "bambina persa", "bambino smarrito", "bambina smarrita",
+      "molestie", "aggressione", "minaccia", "arma", "pistola", "coltello",
+      "fuoco", "fumo", "evacuazione", "bomba"
+    ],
+    "ar": [
+      "طبية", "إصابة", "ألم في الصدر", "فاقد الوعي",
+      "لا أستطيع التنفس", "مشكلة في التنفس", "لا يتنفس",
+      "طفل ضائع", "طفلة مفقودة",
+      "تحرش", "اعتداء", "تهديد", "سلاح", "مسدس", "سكين",
+      "حريق", "دخان", "إخلاء", "قنبلة"
+    ],
+    "ja": [
+      "具合が悪い", "怪我", "胸が痛い", "意識がない",
+      "息ができない", "息が苦しい", "呼吸してない",
+      "子供がいなくなった", "子供が迷子",
+      "迷惑行為", "暴行", "脅迫", "武器", "銃", "ナイフ",
+      "火事", "煙", "避難", "爆弾"
     ]
   }
 }
