@@ -1,3 +1,7 @@
+jest.mock('../services/llm', () => ({
+  embedText: jest.fn().mockResolvedValue([0.1, 0.2, 0.3])
+}));
+
 const {
   classify,
   getSupportedTriggerLanguages,
@@ -5,8 +9,13 @@ const {
 } = require('../services/classifier');
 const { retrieve, loadKnowledgeBase } = require('../services/retriever');
 
-const kb = loadKnowledgeBase();
-const escalationTriggers = kb.escalationTriggers;
+let kb;
+let escalationTriggers;
+
+beforeAll(async () => {
+  kb = await loadKnowledgeBase();
+  escalationTriggers = kb.escalationTriggers;
+});
 
 describe('classify', () => {
   test('escalates an obvious medical case regardless of retrieval', async () => {

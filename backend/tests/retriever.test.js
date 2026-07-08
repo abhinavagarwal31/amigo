@@ -1,7 +1,15 @@
+jest.mock('../services/llm', () => ({
+  embedText: jest.fn().mockResolvedValue([0.1, 0.2, 0.3])
+}));
+
 const retrieverModule = require('../services/retriever');
 const { retrieve, loadKnowledgeBase } = retrieverModule;
 
-const kb = loadKnowledgeBase();
+let kb;
+
+beforeAll(async () => {
+  kb = await loadKnowledgeBase();
+});
 
 describe('retriever', () => {
   test('finds accessible restroom for a known query', () => {
@@ -92,10 +100,10 @@ describe('retriever', () => {
     expect(results[0].score).toBeGreaterThan(0.5);
   });
 
-  test('builds the document index once at load time, not on every retrieve() call', () => {
+  test('builds the document index once at load time, not on every retrieve() call', async () => {
     const buildDocIndexSpy = jest.spyOn(retrieverModule, 'buildDocIndex');
 
-    const freshKb = loadKnowledgeBase();
+    const freshKb = await loadKnowledgeBase();
     expect(buildDocIndexSpy).toHaveBeenCalledTimes(freshKb.venues.length);
 
     buildDocIndexSpy.mockClear();
@@ -109,7 +117,7 @@ describe('retriever', () => {
     buildDocIndexSpy.mockRestore();
   });
 
-  test('degrades gracefully for a gate status not present in GATE_STATUS_KEYWORDS', () => {
+  test('degrades gracefully for a gate status not present in GATE_STATUS_KEYWORDS', async () => {
     const syntheticVenue = {
       id: 'venue_test',
       name: 'Test Venue',
@@ -123,7 +131,7 @@ describe('retriever', () => {
     const syntheticKb = {
       venues: [syntheticVenue],
       escalationTriggers: {},
-      docIndex: retrieverModule.buildDocIndex(syntheticVenue)
+      docIndex: await retrieverModule.buildDocIndex(syntheticVenue)
     };
 
     expect(() => retrieve('gate_z', { venueId: 'venue_test', kb: syntheticKb })).not.toThrow();

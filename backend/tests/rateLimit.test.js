@@ -1,3 +1,10 @@
+jest.mock('../services/llm', () => ({
+  generateAnswer: jest.fn(),
+  classifyAmbiguous: jest.fn(),
+  generateBriefing: jest.fn(),
+  embedText: jest.fn().mockResolvedValue([0.1, 0.2, 0.3])
+}));
+
 const request = require('supertest');
 const app = require('../server');
 const { MAX_REQUESTS_PER_WINDOW } = require('../middleware/rateLimit');

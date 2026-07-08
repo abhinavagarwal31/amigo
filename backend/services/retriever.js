@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { embedText } = require('./llm');
 
 // Filler/function words to strip before scoring, so token overlap reflects meaningful
 // content words instead of grammar. English-only stopwords would silently penalize
@@ -171,20 +172,30 @@ function buildDocs(venue) {
   return docs;
 }
 
-// Precomputes each doc's token set AND Japanese bigram set once, at knowledge-base-load
-// time, rather than recomputing either on every retrieve() call.
-function buildDocIndex(venue) {
-  return buildDocs(venue).map((doc) => ({
+// Precomputes each doc's token set, Japanese bigram set, AND semantic embedding vector
+// once, at knowledge-base-load time, rather than recomputing any of them on every
+// retrieve() call. The embedding is computed from `doc.text` (the plain-language fact,
+// e.g. "Restroom at Section 214 concourse...") rather than `searchText` (the
+// keyword-stuffed field used for token matching) — embeddings capture meaning, so they
+// don't need synonym-list stuffing the way literal token overlap does.
+async function buildDocIndex(venue) {
+  const docs = buildDocs(venue);
+  const embeddings = await Promise.all(docs.map((doc) => embedText(doc.text)));
+  return docs.map((doc, i) => ({
     ...doc,
     tokens: new Set(tokenize(doc.searchText)),
-    japaneseBigrams: japaneseBigrams(doc.searchText)
+    japaneseBigrams: japaneseBigrams(doc.searchText),
+    embedding: embeddings[i]
   }));
 }
 
-function loadKnowledgeBase(kbPath = path.join(__dirname, '..', 'data', 'venues.json')) {
+async function loadKnowledgeBase(kbPath = path.join(__dirname, '..', 'data', 'venues.json')) {
   const raw = fs.readFileSync(kbPath, 'utf-8');
   const data = JSON.parse(raw);
-  const docIndex = data.venues.flatMap((venue) => module.exports.buildDocIndex(venue));
+  const docIndexPerVenue = await Promise.all(
+    data.venues.map((venue) => module.exports.buildDocIndex(venue))
+  );
+  const docIndex = docIndexPerVenue.flat();
   return { ...data, docIndex };
 }
 
@@ -197,7 +208,7 @@ function scoreDocTokens(queryTokens, docTokens) {
 }
 
 // eslint-disable-next-line no-unused-vars
-function stripInternalFields({ tokens, japaneseBigrams: docBigrams, ...doc }) {
+function stripInternalFields({ tokens, japaneseBigrams: docBigrams, embedding, ...doc }) {
   return doc;
 }
 

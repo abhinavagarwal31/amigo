@@ -5,7 +5,17 @@ const { classify } = require('../services/classifier');
 const { generateAnswer, classifyAmbiguous } = require('../services/llm');
 
 const router = express.Router();
-const kb = loadKnowledgeBase();
+
+// Lazy + memoized: loading the knowledge base now computes a semantic embedding per doc
+// (one Gemini API call each), so it must not run as a side effect of merely requiring this
+// module - tests/tools that require the router (or the app) without ever hitting this route
+// would otherwise pay that cost, or fail outright without a GEMINI_API_KEY. It still only
+// runs once per server process, on the first real request.
+let kbPromise = null;
+function getKnowledgeBase() {
+  if (!kbPromise) kbPromise = loadKnowledgeBase();
+  return kbPromise;
+}
 
 router.post('/', async (req, res) => {
   const { query, venueId, outputLanguage } = req.body || {};
@@ -24,6 +34,7 @@ router.post('/', async (req, res) => {
   const cleanQuery = sanitized.value;
 
   try {
+    const kb = await getKnowledgeBase();
     const retrievedDocs = retrieve(cleanQuery, { venueId, kb });
 
     const classification = await classify(cleanQuery, retrievedDocs, {
