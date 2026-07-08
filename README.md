@@ -43,8 +43,9 @@ Fan question (typed or spoken)
   sanitize.js        strip control chars, cap length, reject empty input
         │
         ▼
-  retriever.js        keyword/substring match against venues.json, scoped to the
-                       selected venue, returns top-scored facts
+  retriever.js        embeds the query with Gemini, scores it by cosine similarity
+                       against precomputed doc embeddings for venues.json, scoped
+                       to the selected venue, returns top-scored facts
         │
         ▼
   classifier.js        1. hard keyword floor → ESCALATE if matched
@@ -94,9 +95,11 @@ strictly from `venues.json` facts.
   separately hardcoded list, so it can't drift out of sync as languages are added.
   Two of the eight have documented, narrower caveats (see "Expanding Language Coverage"
   below for the full methodology and reasoning): Japanese has no whitespace word
-  segmentation, so retrieval and trigger matching fall back to character-bigram/substring
-  comparison instead of the word-token matching the other seven languages use — lower
-  precision, not equivalent quality, and said so plainly rather than silently. Arabic's
+  segmentation, so escalation-trigger matching falls back to substring comparison instead
+  of the word-token matching the other seven languages use — lower precision, not
+  equivalent quality, and said so plainly rather than silently. (Retrieval itself is
+  unaffected by this, since embedding-based similarity doesn't depend on word
+  segmentation in any language.) Arabic's
   definite article attaches as a prefix to the noun itself (unlike a separate word such as
   Spanish "el"), which is handled for the common case, but Arabic's fuller set of attached
   prefixes (e.g. the "with"/"by" preposition) isn't — an honest, partial fix, not a full
@@ -105,9 +108,16 @@ strictly from `venues.json` facts.
   (strongest in Chrome-based browsers, limited/unavailable in some others). Both the
   volunteer view and the kiosk view always provide a fully functional text-input fallback —
   voice is a convenience layer on top of typing, never a requirement.
-- Retrieval is a Phase 1 keyword/substring matcher, intentionally chosen over an
-  embedding-similarity layer — a simple, fully-tested keyword search is more defensible
-  under time pressure than a half-finished embedding search.
+- Retrieval is embedding-based: each fact doc's plain-language text is embedded once via
+  Gemini (`text-embedding-004`) at knowledge-base load time and cached in memory; each
+  incoming query is embedded once per request and matched by cosine similarity against
+  those cached doc vectors. This means a query needs no vocabulary in common with the
+  stored fact to retrieve it correctly — a paraphrase like "is there somewhere my kid can
+  go pee" retrieves the same restroom doc as "where is the nearest accessible restroom,"
+  which the earlier keyword/token-overlap matcher could not do. The tradeoff: **each
+  `/api/query` request now costs 2 Gemini API calls instead of 1** — one to embed the
+  query, one to generate the answer (doc embeddings themselves are computed once at
+  startup, not per request, so they don't add to this per-request cost).
 - Kiosk mode is a fully implemented self-service walk-up interface, reached via the `/kiosk`
   route and reusing the exact same backend and voice hooks as the volunteer view. It is
   fixed to a single pre-configured venue (representing how a real kiosk would be provisioned
@@ -221,7 +231,7 @@ npm run lint           # ESLint, including eslint-plugin-jsx-a11y
 npm run build:frontend # production Vite build
 ```
 
-Expected `npm test` output: 13 test suites, 95 tests, all passing — covering retrieval
+Expected `npm test` output: 13 test suites, 98 tests, all passing — covering retrieval
 accuracy (including multilingual, word-boundary, and script-specific edge cases across all
 eight fully-supported languages), escalation classification (medical/factual/policy/ambiguous
 cases across en/es/pt/fr/de/it/ar/ja, plus fail-closed behavior on a parse/network failure),
@@ -239,8 +249,11 @@ Gemini API (useful before a demo, or after touching prompt wording):
 npm run test:live   # requires GEMINI_API_KEY in the environment; makes real, billed calls
 ```
 
-This runs `backend/tests/live/gemini.live.test.js` only — 3 cases (grounded-fact, out-of-scope
-grounding, and the ambiguous-classification LLM-assist path) against the real API. It's
+This runs everything under `backend/tests/live/` against the real API: `gemini.live.test.js`'s
+3 cases (grounded-fact, out-of-scope grounding, and the ambiguous-classification LLM-assist
+path), plus `retrieval.live.test.js`'s 10 cases proving genuinely paraphrased queries (no
+shared vocabulary with the stored fact) are retrieved correctly by real Gemini embeddings, and
+re-confirming multilingual edge cases found during earlier manual testing. Both files are
 excluded from `npm test` via `--testPathIgnorePatterns`, and additionally guarded internally
 (`describe.skip` unless `RUN_LIVE_TESTS=true` is also set) as a second safety net. Note: the
 Gemini free tier caps requests per model per day (not per minute) — heavy manual testing plus
