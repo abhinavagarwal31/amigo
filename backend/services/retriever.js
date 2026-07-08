@@ -2,11 +2,12 @@ const fs = require('fs');
 const path = require('path');
 const { embedText } = require('./llm');
 
-// Filler/function words to strip before scoring, so token overlap reflects meaningful
+// Filler/function words to strip before tokenizing, so token comparisons reflect meaningful
 // content words instead of grammar. English-only stopwords would silently penalize
 // natural non-English sentences relative to their English equivalents (extra unmatched
-// filler tokens dilute the match score) — so each supported language's equivalents of
-// "where/is/the/nearest/what/how" etc. are included too.
+// filler tokens would otherwise leak into matching) — so each supported language's equivalents of
+// "where/is/the/nearest/what/how" etc. are included too. Still used by classifier.js's
+// deterministic escalation-trigger matching, which stays keyword/token-based on purpose.
 const STOPWORDS = new Set([
   // English
   'a', 'an', 'the', 'is', 'are', 'was', 'were', 'be', 'to', 'of', 'in', 'on', 'at',
@@ -35,11 +36,11 @@ const STOPWORDS = new Set([
 ]);
 
 // Arabic's definite article ("the") attaches directly as a prefix to the noun itself
-// (\u0627\u0644, "al-") rather than appearing as a separate word the way Spanish "el" or
+// (ال, "al-") rather than appearing as a separate word the way Spanish "el" or
 // French "le" do — so "alHammam" ("the bathroom") and "Hammam" ("bathroom") are different
 // tokens under exact matching unless this prefix is stripped first. This is a standard,
 // well-established Arabic text-processing technique (not a project-specific hack).
-const ARABIC_DEFINITE_ARTICLE = '\u0627\u0644';
+const ARABIC_DEFINITE_ARTICLE = 'ال';
 
 function stripArabicDefiniteArticle(token) {
   if (token.length > ARABIC_DEFINITE_ARTICLE.length && token.startsWith(ARABIC_DEFINITE_ARTICLE)) {
@@ -51,7 +52,7 @@ function stripArabicDefiniteArticle(token) {
 function tokenize(text) {
   return text
     .toLowerCase()
-    .replace(/[^a-z0-9À-ÿ\u0600-\u06FF\s]/gi, ' ')
+    .replace(/[^a-z0-9À-ÿ؀-ۿ\s]/gi, ' ')
     .split(/\s+/)
     .map(stripArabicDefiniteArticle)
     .filter((token) => token.length > 0 && !STOPWORDS.has(token));
@@ -60,80 +61,24 @@ function tokenize(text) {
 // Japanese (and CJK generally) has no whitespace word segmentation, so the whitespace-split
 // tokenizer above cannot produce meaningful tokens for it — worse, its regex strips Japanese
 // characters entirely (they fall outside a-z0-9À-ÿ), silently discarding them. Detected here
-// so retrieve()/matchesTrigger() can route Japanese text through a different, honestly
-// lower-precision fallback instead of a real tokenizer/morphological analyzer.
+// so classifier.js's matchesTrigger() can route Japanese trigger matching through a different,
+// honestly lower-precision fallback instead of a real tokenizer/morphological analyzer.
 // Hiragana (U+3040-309F) + Katakana (U+30A0-30FF) + CJK Unified Ideographs / Kanji (U+4E00-9FFF).
-const JAPANESE_CHAR_REGEX = /[\u3040-\u30FF\u4E00-\u9FFF]/;
+const JAPANESE_CHAR_REGEX = /[぀-ヿ一-鿿]/;
 
 function isJapaneseText(text) {
   return JAPANESE_CHAR_REGEX.test(text);
 }
 
-// Simple, honest fallback for Japanese: character bigram overlap instead of token overlap.
-// This is lower-precision than the token-based approach used for the other seven supported
-// languages (en/es/pt/fr/de/it/ar) — it can't distinguish word boundaries, so it's more
-// prone to partial/spurious matches on shared character sequences. Documented as a known
-// limitation in the README rather than silently shipped as equivalent-quality retrieval.
-function japaneseBigrams(text) {
-  const cleaned = text.replace(/\s+/g, '');
-  const bigrams = new Set();
-  for (let i = 0; i < cleaned.length - 1; i += 1) {
-    bigrams.add(cleaned.slice(i, i + 2));
-  }
-  return bigrams;
-}
-
-// No longer called by retrieve() (superseded by embedding-based cosine similarity), but
-// kept side-by-side and unused-lint-suppressed until semantic retrieval is proven out
-// against real queries — see the semantic-retrieval spec's step 4 cleanup commit.
-// eslint-disable-next-line no-unused-vars
-function scoreBigramOverlap(queryBigrams, docBigrams) {
-  if (queryBigrams.size === 0) return 0;
-  let matches = 0;
-  for (const bigram of queryBigrams) {
-    if (docBigrams.has(bigram)) matches += 1;
-  }
-  return matches / queryBigrams.size;
-}
-
-// Multilingual keyword expansions for each document category, so a query in any supported
-// language can retrieve the same (English-authored) fact doc. These are fixed keyword
-// synonyms added to searchText only — they never touch the underlying fact text/data, so
-// the LLM still only ever sees the original, versioned venue facts. Japanese entries are
-// included here too (harmlessly stripped by tokenize() for the other languages' matching,
-// but present in the raw searchText that Japanese bigram scoring reads directly).
-const RESTROOM_KEYWORDS =
-  'restroom bathroom toilet baño banheiro toilettes Toilette WC Badezimmer bagno servizi دورة مياه حمام مرحاض トイレ お手洗い';
-const GATE_KEYWORDS = 'gate puerta portão porte Tor Eingang cancello varco porta بوابة مدخل ゲート 入口';
-const WHEELCHAIR_KEYWORDS =
-  'wheelchair accessible silla de ruedas accesible cadeira de rodas acessível fauteuil roulant accessible barrierefrei rollstuhlgerecht sedia a rotelle متاح للكراسي المتحركة 車椅子 バリアフリー';
-const TRANSIT_KEYWORDS =
-  'transit train bus metro tren autobús trem ônibus métro last departure última salida última partida dernier départ ÖPNV Zug U-Bahn letzte Abfahrt trasporti treno ultima corsa مواصلات قطار حافلة آخر رحلة 電車 地下鉄 終電';
-const POLICY_KEYWORDS = 'policy política politica Regeln regolamento سياسة ルール';
-// Extension point: if venues.json ever uses a gate status value not listed here, add its
-// per-language keyword entry too. An unmapped status still degrades safely — buildDocs()
-// falls back to the raw status string below — but it loses the translated-keyword boost
-// for non-English queries until it's added here.
-const GATE_STATUS_KEYWORDS = {
-  open: 'open abierto aberto ouvert offen aperto مفتوح 開場',
-  closed: 'closed cerrado fechado fermé geschlossen chiuso مغلق 閉場',
-  restricted: 'restricted restringido restrito restreint eingeschränkt limitato مقيد 入場制限',
-  delayed: 'delayed retrasado atrasado retardé verspätet ritardo متأخر 遅延'
-};
-
 function buildDocs(venue) {
   const docs = [];
 
   for (const gate of venue.gates || []) {
-    const statusKeywords = GATE_STATUS_KEYWORDS[gate.status] || gate.status;
     docs.push({
       type: 'gate',
       venueId: venue.id,
       venueName: venue.name,
       text: `Gate ${gate.id}: status ${gate.status}, wheelchair accessible: ${gate.wheelchairAccessible}. ${gate.notes || ''}`,
-      searchText: `${GATE_KEYWORDS} ${gate.id} ${statusKeywords} ${
-        gate.wheelchairAccessible ? WHEELCHAIR_KEYWORDS : ''
-      } ${gate.notes || ''}`,
       data: gate
     });
   }
@@ -144,9 +89,6 @@ function buildDocs(venue) {
       venueId: venue.id,
       venueName: venue.name,
       text: `Restroom at ${restroom.location}, wheelchair accessible: ${restroom.wheelchairAccessible}.`,
-      searchText: `${RESTROOM_KEYWORDS} ${restroom.location} ${
-        restroom.wheelchairAccessible ? WHEELCHAIR_KEYWORDS : ''
-      }`,
       data: restroom
     });
   }
@@ -157,7 +99,6 @@ function buildDocs(venue) {
       venueId: venue.id,
       venueName: venue.name,
       text: `${transitOption.mode} (${transitOption.line}): last departure at ${transitOption.lastDeparture}.`,
-      searchText: `${TRANSIT_KEYWORDS} ${transitOption.mode} ${transitOption.line}`,
       data: transitOption
     });
   }
@@ -168,7 +109,6 @@ function buildDocs(venue) {
       venueId: venue.id,
       venueName: venue.name,
       text: policy.answer,
-      searchText: `${POLICY_KEYWORDS} ${policy.topic} ${policy.answer}`,
       data: policy
     });
   }
@@ -176,21 +116,15 @@ function buildDocs(venue) {
   return docs;
 }
 
-// Precomputes each doc's token set, Japanese bigram set, AND semantic embedding vector
-// once, at knowledge-base-load time, rather than recomputing any of them on every
-// retrieve() call. The embedding is computed from `doc.text` (the plain-language fact,
-// e.g. "Restroom at Section 214 concourse...") rather than `searchText` (the
-// keyword-stuffed field used for token matching) — embeddings capture meaning, so they
-// don't need synonym-list stuffing the way literal token overlap does.
+// Precomputes each doc's semantic embedding vector once, at knowledge-base-load time,
+// rather than recomputing it on every retrieve() call. The embedding is computed from
+// `doc.text` (the plain-language fact, e.g. "Restroom at Section 214 concourse...") —
+// embeddings capture meaning directly, so there's no need for keyword-synonym stuffing
+// the way literal token overlap once required.
 async function buildDocIndex(venue) {
   const docs = buildDocs(venue);
   const embeddings = await Promise.all(docs.map((doc) => embedText(doc.text)));
-  return docs.map((doc, i) => ({
-    ...doc,
-    tokens: new Set(tokenize(doc.searchText)),
-    japaneseBigrams: japaneseBigrams(doc.searchText),
-    embedding: embeddings[i]
-  }));
+  return docs.map((doc, i) => ({ ...doc, embedding: embeddings[i] }));
 }
 
 async function loadKnowledgeBase(kbPath = path.join(__dirname, '..', 'data', 'venues.json')) {
@@ -203,20 +137,8 @@ async function loadKnowledgeBase(kbPath = path.join(__dirname, '..', 'data', 've
   return { ...data, docIndex };
 }
 
-// No longer called by retrieve() (superseded by embedding-based cosine similarity), but
-// kept side-by-side and unused-lint-suppressed until semantic retrieval is proven out
-// against real queries — see the semantic-retrieval spec's step 4 cleanup commit.
 // eslint-disable-next-line no-unused-vars
-function scoreDocTokens(queryTokens, docTokens) {
-  let matches = 0;
-  for (const token of queryTokens) {
-    if (docTokens.has(token)) matches += 1;
-  }
-  return matches === 0 ? 0 : matches / queryTokens.length;
-}
-
-// eslint-disable-next-line no-unused-vars
-function stripInternalFields({ tokens, japaneseBigrams: docBigrams, embedding, ...doc }) {
+function stripInternalFields({ embedding, ...doc }) {
   return doc;
 }
 
@@ -265,7 +187,6 @@ module.exports = {
   tokenize,
   buildDocIndex,
   isJapaneseText,
-  japaneseBigrams,
   cosineSimilarity,
   SIMILARITY_THRESHOLD
 };

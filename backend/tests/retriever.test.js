@@ -3,7 +3,7 @@ jest.mock('../services/llm', () => ({
 }));
 
 const retrieverModule = require('../services/retriever');
-const { retrieve, loadKnowledgeBase, tokenize, japaneseBigrams, cosineSimilarity } = retrieverModule;
+const { retrieve, loadKnowledgeBase, cosineSimilarity } = retrieverModule;
 
 let kb;
 
@@ -124,7 +124,7 @@ describe('retriever', () => {
     buildDocIndexSpy.mockRestore();
   });
 
-  test('degrades gracefully for a gate status not present in GATE_STATUS_KEYWORDS', async () => {
+  test('degrades gracefully for an arbitrary gate status not covered by any special-casing', async () => {
     const syntheticVenue = {
       id: 'venue_test',
       name: 'Test Venue',
@@ -146,9 +146,13 @@ describe('retriever', () => {
     const results = await retrieve('staff-only gate', { venueId: 'venue_test', kb: syntheticKb });
     expect(results.length).toBeGreaterThan(0);
     expect(results[0].type).toBe('gate');
-    // No translated keyword boost for an unmapped status, but the raw string is still
-    // present and the gate is still indexed/retrievable - not silently dropped.
+    // The raw status string is embedded as-is (no keyword lookup involved anymore), so an
+    // unusual value is still indexed/retrievable - not silently dropped.
     expect(results[0].text).toMatch(/staff-only/);
+  });
+
+  test('tokenize strips stopwords consistently regardless of accents', () => {
+    expect(retrieverModule.tokenize('¿dónde está el baño?')).not.toContain('el');
   });
 
   test('finds the accessible restroom for a German query', async () => {
@@ -182,23 +186,5 @@ describe('retriever', () => {
     expect(cosineSimilarity([1, 2, 3], [1, 2, 3])).toBeCloseTo(1);
     expect(cosineSimilarity([1, 0], [0, 1])).toBe(0);
     expect(cosineSimilarity([0, 0], [1, 1])).toBe(0);
-  });
-});
-
-// Regression tests for the old token/bigram-overlap scoring functions. This code is no
-// longer used by retrieve() (which now scores via embeddings + cosine similarity), but it
-// has not been deleted yet - classifier.js's own trigger matching still depends on the
-// tokenizer, and the retrieval-scoring functions are kept side-by-side with the new
-// semantic path until it's proven out with real queries (see the semantic-retrieval spec's
-// step 4). These tests protect that not-yet-removed code from silent breakage in the
-// meantime; delete them in the same commit that deletes the code they cover.
-describe('legacy token/bigram scoring (pre-embeddings, not used by retrieve() anymore)', () => {
-  test('japaneseBigrams produces overlapping bigrams for a Japanese restroom query', () => {
-    const bigrams = japaneseBigrams('トイレはどこですか');
-    expect(bigrams.size).toBeGreaterThan(0);
-  });
-
-  test('tokenize strips stopwords consistently regardless of accents', () => {
-    expect(tokenize('¿dónde está el baño?')).not.toContain('el');
   });
 });
