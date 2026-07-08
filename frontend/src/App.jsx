@@ -4,7 +4,7 @@ import { VoiceInputButton } from './components/VoiceInputButton';
 import { AnswerCard } from './components/AnswerCard';
 import { EscalationBanner } from './components/EscalationBanner';
 import { VENUES, LANGUAGES } from './constants';
-import { fetchWithTimeout } from './fetchWithTimeout';
+import { useAmigoQuery } from './hooks/useAmigoQuery';
 
 export default function App() {
   const [venueId, setVenueId] = useState(VENUES[0].id);
@@ -13,6 +13,7 @@ export default function App() {
   const [response, setResponse] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const { submitQuery: performQuery } = useAmigoQuery();
 
   const submitQuery = useCallback(
     async (overrideText) => {
@@ -23,28 +24,18 @@ export default function App() {
       setError(null);
       setResponse(null);
 
-      try {
-        const res = await fetchWithTimeout('/api/query', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: trimmed, venueId, outputLanguage: language })
-        });
-        const data = await res.json();
+      const result = await performQuery({ query: trimmed, venueId, outputLanguage: language });
+      setLoading(false);
 
-        if (!res.ok) {
-          setError(data.error || 'Something went wrong. Please try again.');
-          return;
-        }
-
-        setResponse(data);
-        setQueryText('');
-      } catch (err) {
-        setError('Could not reach the server. Please try again.');
-      } finally {
-        setLoading(false);
+      if (!result.ok) {
+        setError(result.error);
+        return;
       }
+
+      setResponse(result.data);
+      setQueryText('');
     },
-    [queryText, venueId, language]
+    [queryText, venueId, language, performQuery]
   );
 
   return (

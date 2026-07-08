@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
+import { useAmigoQuery } from '../hooks/useAmigoQuery';
 import { VENUES, LANGUAGES, getLanguageDir } from '../constants';
 import { fetchWithTimeout } from '../fetchWithTimeout';
 
@@ -99,6 +100,7 @@ export function KioskView() {
     lang: language || 'en-US'
   });
   const { speak, stop: stopSpeaking } = useSpeechSynthesis();
+  const { submitQuery: performQuery } = useAmigoQuery();
 
   const resetSession = useCallback(() => {
     stop();
@@ -123,34 +125,24 @@ export function KioskView() {
       setState(STATE.PROCESSING);
       setError(null);
 
-      try {
-        const res = await fetchWithTimeout('/api/query', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: transcript, venueId, outputLanguage: lang })
-        });
-        const data = await res.json();
+      const result = await performQuery({ query: transcript, venueId, outputLanguage: lang });
 
-        if (!res.ok) {
-          setError(data.error || 'Something went wrong. Please try again.');
-          setState(STATE.RESPONDING);
-          return;
-        }
-
-        setResponse(data);
+      if (!result.ok) {
+        setError(result.error);
         setState(STATE.RESPONDING);
+        return;
+      }
 
-        if (data.escalation) {
-          speak(getKioskEscalationText(lang).body, lang);
-        } else if (data.answer) {
-          speak(data.answer, lang);
-        }
-      } catch (err) {
-        setError('Could not reach the server. Please try again.');
-        setState(STATE.RESPONDING);
+      setResponse(result.data);
+      setState(STATE.RESPONDING);
+
+      if (result.data.escalation) {
+        speak(getKioskEscalationText(lang).body, lang);
+      } else if (result.data.answer) {
+        speak(result.data.answer, lang);
       }
     },
-    [venueId, speak]
+    [venueId, speak, performQuery]
   );
 
   const handleSelectLanguage = (langCode) => {
