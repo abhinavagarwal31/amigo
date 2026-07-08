@@ -104,9 +104,12 @@ describe('embedText', () => {
   test('returns the embedding vector from the Gemini embeddings API', async () => {
     mockEmbedContent.mockResolvedValue({ embedding: { values: [0.1, 0.2, 0.3] } });
 
-    const vector = await embedText('where is the nearest restroom');
+    const vector = await embedText('where is the nearest restroom', 'RETRIEVAL_QUERY');
 
     expect(vector).toEqual([0.1, 0.2, 0.3]);
-    expect(mockEmbedContent).toHaveBeenCalledWith('where is the nearest restroom');
+    expect(mockEmbedContent).toHaveBeenCalledWith({
+      content: { role: 'user', parts: [{ text: 'where is the nearest restroom' }] },
+      taskType: 'RETRIEVAL_QUERY'
+    });
   });
 });

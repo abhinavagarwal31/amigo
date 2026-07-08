@@ -115,10 +115,17 @@ function buildVenueFactsText(venue) {
   return lines.join('\n');
 }
 
-async function embedText(text) {
+// gemini-embedding-001 supports task-specific embeddings: asking for RETRIEVAL_DOCUMENT vs
+// RETRIEVAL_QUERY (rather than the untyped default) meaningfully widens the similarity gap
+// between a query and its matching fact vs. an unrelated one, which is what retrieval's
+// cosine-similarity threshold depends on.
+async function embedText(text, taskType) {
   const client = getClient();
   const model = client.getGenerativeModel({ model: EMBEDDING_MODEL });
-  const result = await model.embedContent(text);
+  const result = await model.embedContent({
+    content: { role: 'user', parts: [{ text }] },
+    taskType
+  });
   return result.embedding.values;
 }
 

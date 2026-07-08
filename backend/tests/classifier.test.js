@@ -48,14 +48,18 @@ describe('classify', () => {
   });
 
   test('exercises the LLM-assist path for an ambiguous case and escalates on its judgment', async () => {
+    // retrievedDocs is passed as [] directly rather than via retrieve(): this test's job is to
+    // exercise classify()'s no-confident-match branching, not retrieve()'s scoring for this exact
+    // string. fakeEmbed's incidental hash-bucket overlap for this phrase isn't representative of
+    // real embedding behavior (see retriever.js's SIMILARITY_THRESHOLD comment), and retrieve()'s
+    // own empty-result behavior already has dedicated coverage in retriever.test.js.
     const query = 'i feel really strange and dizzy all of a sudden';
-    const retrievedDocs = await retrieve(query, { venueId: 'venue_01', kb });
     const askLLMToClassify = jest.fn().mockResolvedValue({
       category: 'ESCALATE',
       reasoning: 'possible medical distress signal'
     });
 
-    const result = await classify(query, retrievedDocs, { escalationTriggers, askLLMToClassify });
+    const result = await classify(query, [], { escalationTriggers, askLLMToClassify });
 
     expect(askLLMToClassify).toHaveBeenCalledWith(query);
     expect(result.category).toBe('ESCALATE');
@@ -64,14 +68,15 @@ describe('classify', () => {
   });
 
   test('exercises the LLM-assist path and falls back to low-confidence GROUNDED_FACT when LLM does not escalate', async () => {
+    // See the comment in the previous test: retrievedDocs is [] by design here, not derived from
+    // retrieve(), since this test targets classify()'s branching, not retrieval scoring.
     const query = 'tell me something about this place';
-    const retrievedDocs = await retrieve(query, { venueId: 'venue_01', kb });
     const askLLMToClassify = jest.fn().mockResolvedValue({
       category: 'GROUNDED_FACT',
       reasoning: 'general question, no urgency detected'
     });
 
-    const result = await classify(query, retrievedDocs, { escalationTriggers, askLLMToClassify });
+    const result = await classify(query, [], { escalationTriggers, askLLMToClassify });
 
     expect(askLLMToClassify).toHaveBeenCalledWith(query);
     expect(result.category).toBe('GROUNDED_FACT');

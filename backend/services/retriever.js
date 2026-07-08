@@ -123,7 +123,7 @@ function buildDocs(venue) {
 // the way literal token overlap once required.
 async function buildDocIndex(venue) {
   const docs = buildDocs(venue);
-  const embeddings = await Promise.all(docs.map((doc) => embedText(doc.text)));
+  const embeddings = await Promise.all(docs.map((doc) => embedText(doc.text, 'RETRIEVAL_DOCUMENT')));
   return docs.map((doc, i) => ({ ...doc, embedding: embeddings[i] }));
 }
 
@@ -155,10 +155,15 @@ function cosineSimilarity(a, b) {
   return dot / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
-// Tuned against the same real-world queries used in earlier live testing (see the
-// RUN_LIVE_TESTS-gated suite) — high enough to reject unrelated docs, low enough that
-// genuine paraphrases of a fact still clear it.
-const SIMILARITY_THRESHOLD = 0.75;
+// Tuned against real cosine scores from gemini-embedding-001 (see backend/scripts/
+// debug-embedding-scores.js): for this small, topically-narrow knowledge base, genuine
+// paraphrase matches score as low as ~0.63, while an unrelated query's top (wrong) doc can
+// score ~0.64 — the two ranges overlap, so no threshold here can guarantee zero false
+// positives. This is set low enough to favor recall (retrieve genuine paraphrases like
+// "kid go pee" for "restroom"); precision against irrelevant matches is enforced downstream
+// by generateAnswer's grounding system prompt, which refuses to answer from context that
+// doesn't actually contain the answer.
+const SIMILARITY_THRESHOLD = 0.6;
 
 async function retrieve(query, options = {}) {
   const { venueId, topK = 3, kb } = options;
@@ -170,7 +175,7 @@ async function retrieve(query, options = {}) {
 
   if (!query || query.trim().length === 0) return [];
 
-  const queryEmbedding = await embedText(query);
+  const queryEmbedding = await embedText(query, 'RETRIEVAL_QUERY');
 
   const scored = candidateDocs
     .map((doc) => ({ ...doc, score: cosineSimilarity(queryEmbedding, doc.embedding) }))
