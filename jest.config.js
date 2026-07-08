@@ -8,7 +8,7 @@ module.exports = {
     {
       displayName: 'frontend',
       testEnvironment: 'jsdom',
-      testMatch: ['<rootDir>/frontend/tests/**/*.test.jsx'],
+      testMatch: ['<rootDir>/frontend/tests/**/*.test.{js,jsx}'],
       setupFilesAfterEnv: ['<rootDir>/frontend/tests/setup.js'],
       transform: {
         '^.+\\.jsx?$': 'babel-jest'
