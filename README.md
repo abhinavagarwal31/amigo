@@ -222,8 +222,12 @@ npm run dev
 npm run dev:frontend
 ```
 
-- Volunteer view: http://localhost:5173/
-- Kiosk view: http://localhost:5173/kiosk
+- **Landing page** (entry point): http://localhost:5173/
+- **Volunteer view**: http://localhost:5173/volunteer
+- **Kiosk view**: http://localhost:5173/kiosk
+
+The root URL (`/`) shows a landing screen that lets the user pick their role. The
+volunteer view and kiosk view are reached from there (or directly by path).
 
 ```bash
 npm test              # backend (Node) + frontend (jsdom) Jest projects — fully mocked, no network
@@ -231,14 +235,16 @@ npm run lint           # ESLint, including eslint-plugin-jsx-a11y
 npm run build:frontend # production Vite build
 ```
 
-Expected `npm test` output: 13 test suites, 98 tests, all passing — covering retrieval
+Expected `npm test` output: 14 test suites, 107 tests, all passing — covering retrieval
 accuracy (including multilingual, word-boundary, and script-specific edge cases across all
 eight fully-supported languages), escalation classification (medical/factual/policy/ambiguous
 cases across en/es/pt/fr/de/it/ar/ja, plus fail-closed behavior on a parse/network failure),
 the full `/api/query` and `/api/briefing` pipelines (with Gemini mocked), CORS restriction,
-rate limiting, the staff-alert endpoint, and frontend component behavior (`AnswerCard`,
-`VoiceInputButton`, `EscalationBanner`, `KioskView`'s full state machine, fetch-timeout
-handling, and right-to-left rendering for Arabic).
+rate limiting, the staff-alert endpoint, precomputed-embedding caching behaviour (uses file
+when present, falls back to live API when absent), and frontend component behavior
+(`AnswerCard`, `VoiceInputButton`, `EscalationBanner`, `KioskView`'s full state machine,
+`Landing`'s link targets and accessibility, fetch-timeout handling, and right-to-left
+rendering for Arabic).
 
 ### Optional: live API verification
 
@@ -258,6 +264,30 @@ excluded from `npm test` via `--testPathIgnorePatterns`, and additionally guarde
 (`describe.skip` unless `RUN_LIVE_TESTS=true` is also set) as a second safety net. Note: the
 Gemini free tier caps requests per model per day (not per minute) — heavy manual testing plus
 this suite can exhaust that quota, after which calls return 429 until the daily quota resets.
+
+## Precomputed Embeddings (Cold-Start Optimisation)
+
+`backend/data/venues.embeddings.json` is a precomputed cache of the Gemini embedding
+vectors for every document in `venues.json`. When this file is present, `loadKnowledgeBase()`
+reads the vectors from disk and skips the per-document API calls entirely on startup —
+reducing both cold-start latency and API quota consumption.
+
+The tradeoff: embeddings are precomputed because `venues.json` is static. If venue data
+ever becomes dynamic/live (e.g. real-time gate closures), this strategy would need
+revisiting — e.g. invalidate and recompute only the changed docs.
+
+**When to regenerate**: any time `venues.json` changes, re-run:
+
+```bash
+GEMINI_API_KEY=<your-key> node scripts/precompute-embeddings.js
+```
+
+Then commit the updated `backend/data/venues.embeddings.json`. The file contains only float
+vectors — no keys, no PII — so committing it is safe.
+
+**Local development without the file**: `loadKnowledgeBase()` detects the file's absence and
+falls back to live embedding computation automatically. No build step is required to run the
+app locally — the file is an optimisation, not a dependency.
 
 ## Security Notes
 

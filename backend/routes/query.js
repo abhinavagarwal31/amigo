@@ -17,6 +17,14 @@ function getKnowledgeBase() {
   return kbPromise;
 }
 
+// Test-only: allows integration tests to prime the knowledge base with a custom
+// embeddings path (e.g. a non-existent path to force fake-embedding fallback),
+// keeping the integration test suite isolated from venues.embeddings.json on disk.
+function resetKnowledgeBase(promise) {
+  kbPromise = promise;
+}
+
+
 router.post('/', async (req, res) => {
   const { query, venueId, outputLanguage } = req.body || {};
 
@@ -82,3 +90,5 @@ router.post('/', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.resetKnowledgeBase = resetKnowledgeBase;
+

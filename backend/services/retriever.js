@@ -2,6 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const { embedText } = require('./llm');
 
+const EMBEDDINGS_PATH = path.join(__dirname, '..', 'data', 'venues.embeddings.json');
+
 // Filler/function words to strip before tokenizing, so token comparisons reflect meaningful
 // content words instead of grammar. English-only stopwords would silently penalize
 // natural non-English sentences relative to their English equivalents (extra unmatched
@@ -116,22 +118,52 @@ function buildDocs(venue) {
   return docs;
 }
 
+// Stable key for looking up a doc's precomputed embedding vector, matching the key
+// written by scripts/precompute-embeddings.js. Must stay in sync with that script.
+function docKey(doc) {
+  return `${doc.venueId}::${doc.type}::${doc.text}`;
+}
+
 // Precomputes each doc's semantic embedding vector once, at knowledge-base-load time,
 // rather than recomputing it on every retrieve() call. The embedding is computed from
 // `doc.text` (the plain-language fact, e.g. "Restroom at Section 214 concourse...") —
 // embeddings capture meaning directly, so there's no need for keyword-synonym stuffing
 // the way literal token overlap once required.
-async function buildDocIndex(venue) {
+async function buildDocIndex(venue, precomputed) {
   const docs = buildDocs(venue);
-  const embeddings = await Promise.all(docs.map((doc) => embedText(doc.text, 'RETRIEVAL_DOCUMENT')));
+  const embeddings = await Promise.all(
+    docs.map((doc) => {
+      const key = docKey(doc);
+      // Use precomputed vector when available to avoid an API call on every cold start.
+      // venues.json is static, so the vectors never change unless the source data changes
+      // (in which case re-run scripts/precompute-embeddings.js and commit the new file).
+      if (precomputed && Object.prototype.hasOwnProperty.call(precomputed, key)) {
+        return Promise.resolve(precomputed[key]);
+      }
+      return embedText(doc.text, 'RETRIEVAL_DOCUMENT');
+    })
+  );
   return docs.map((doc, i) => ({ ...doc, embedding: embeddings[i] }));
 }
 
-async function loadKnowledgeBase(kbPath = path.join(__dirname, '..', 'data', 'venues.json')) {
+async function loadKnowledgeBase(
+  kbPath = path.join(__dirname, '..', 'data', 'venues.json'),
+  embeddingsPath = EMBEDDINGS_PATH
+) {
   const raw = fs.readFileSync(kbPath, 'utf-8');
   const data = JSON.parse(raw);
+
+  // Load precomputed embeddings if the file is present (production / after running
+  // scripts/precompute-embeddings.js). When absent (local dev without running the
+  // build script), fall back to computing embeddings live — which is the original
+  // behaviour and keeps local development working without any extra setup step.
+  let precomputed = null;
+  if (fs.existsSync(embeddingsPath)) {
+    precomputed = JSON.parse(fs.readFileSync(embeddingsPath, 'utf-8'));
+  }
+
   const docIndexPerVenue = await Promise.all(
-    data.venues.map((venue) => module.exports.buildDocIndex(venue))
+    data.venues.map((venue) => module.exports.buildDocIndex(venue, precomputed))
   );
   const docIndex = docIndexPerVenue.flat();
   return { ...data, docIndex };
@@ -191,6 +223,7 @@ module.exports = {
   loadKnowledgeBase,
   tokenize,
   buildDocIndex,
+  docKey,
   isJapaneseText,
   cosineSimilarity,
   SIMILARITY_THRESHOLD

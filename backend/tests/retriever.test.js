@@ -2,14 +2,20 @@ jest.mock('../services/llm', () => ({
   embedText: jest.fn((text) => Promise.resolve(require('./testUtils/fakeEmbeddings').fakeEmbed(text)))
 }));
 
+const path = require('path');
 const retrieverModule = require('../services/retriever');
 const { retrieve, loadKnowledgeBase, cosineSimilarity } = retrieverModule;
 
 let kb;
 
 beforeAll(async () => {
-  kb = await loadKnowledgeBase();
+  // Pass a non-existent embeddings path so the test suite always falls back to the
+  // fake embeddings mock, regardless of whether venues.embeddings.json is present on
+  // disk. This keeps unit tests isolated from the precomputed file.
+  const noEmbeddingsPath = path.join(__dirname, '__no_embeddings__.json');
+  kb = await loadKnowledgeBase(undefined, noEmbeddingsPath);
 });
+
 
 describe('retriever', () => {
   test('finds accessible restroom for a known query', async () => {
@@ -188,3 +194,78 @@ describe('retriever', () => {
     expect(cosineSimilarity([0, 0], [1, 1])).toBe(0);
   });
 });
+
+describe('loadKnowledgeBase — precomputed embeddings', () => {
+  const { loadKnowledgeBase: loadKB, buildDocIndex, docKey } = require('../services/retriever');
+  const { embedText } = require('../services/llm');
+  const path = require('path');
+  const kbPath = path.join(__dirname, '../../backend/data/venues.json');
+
+  beforeEach(() => {
+    embedText.mockClear();
+  });
+
+  test('uses precomputed vectors and does NOT call embedText for docs whose keys are present', async () => {
+    // Build a minimal precomputed map using the fake embed to generate realistic vectors.
+    const { fakeEmbed } = require('./testUtils/fakeEmbeddings');
+    const venuesRaw = require('../../backend/data/venues.json');
+    const firstVenue = venuesRaw.venues[0];
+
+    // Build doc text for just the first venue so we can construct the precomputed map
+    const docs = [];
+    for (const gate of firstVenue.gates || []) {
+      docs.push({
+        venueId: firstVenue.id,
+        type: 'gate',
+        text: `Gate ${gate.id}: status ${gate.status}, wheelchair accessible: ${gate.wheelchairAccessible}. ${gate.notes || ''}`
+      });
+    }
+    for (const restroom of firstVenue.restrooms || []) {
+      docs.push({
+        venueId: firstVenue.id,
+        type: 'restroom',
+        text: `Restroom at ${restroom.location}, wheelchair accessible: ${restroom.wheelchairAccessible}.`
+      });
+    }
+    for (const transitOption of firstVenue.transit || []) {
+      docs.push({
+        venueId: firstVenue.id,
+        type: 'transit',
+        text: `${transitOption.mode} (${transitOption.line}): last departure at ${transitOption.lastDeparture}.`
+      });
+    }
+    for (const policy of firstVenue.policies || []) {
+      docs.push({ venueId: firstVenue.id, type: 'policy', text: policy.answer });
+    }
+
+    const precomputed = {};
+    for (const doc of docs) {
+      precomputed[docKey(doc)] = fakeEmbed(doc.text);
+    }
+
+    await buildDocIndex(firstVenue, precomputed);
+
+    // embedText should not have been called for any doc whose key was in precomputed
+    expect(embedText).not.toHaveBeenCalled();
+  });
+
+  test('falls back to embedText for docs whose keys are absent from the precomputed file', async () => {
+    const venuesRaw = require('../../backend/data/venues.json');
+    const firstVenue = venuesRaw.venues[0];
+
+    // Pass an empty precomputed map — nothing cached
+    await buildDocIndex(firstVenue, {});
+
+    // Every doc should have triggered a live embedText call
+    expect(embedText).toHaveBeenCalled();
+  });
+
+  test('falls back to embedText when no precomputed file path is given (local dev)', async () => {
+    // Pass a non-existent path for the embeddings file — simulates local dev without the
+    // build step having been run. loadKnowledgeBase should compute embeddings live.
+    const nonExistentPath = path.join(__dirname, 'does-not-exist.json');
+    await loadKB(kbPath, nonExistentPath);
+    expect(embedText).toHaveBeenCalled();
+  });
+});
+

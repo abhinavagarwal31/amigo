@@ -2,6 +2,7 @@ jest.mock('../services/llm', () => ({
   embedText: jest.fn((text) => Promise.resolve(require('./testUtils/fakeEmbeddings').fakeEmbed(text)))
 }));
 
+const path = require('path');
 const {
   classify,
   getSupportedTriggerLanguages,
@@ -13,9 +14,13 @@ let kb;
 let escalationTriggers;
 
 beforeAll(async () => {
-  kb = await loadKnowledgeBase();
+  // Pass a non-existent embeddings path so this suite always uses the fake embeddings
+  // mock, isolated from any precomputed venues.embeddings.json on disk.
+  const noEmbeddingsPath = path.join(__dirname, '__no_embeddings__.json');
+  kb = await loadKnowledgeBase(undefined, noEmbeddingsPath);
   escalationTriggers = kb.escalationTriggers;
 });
+
 
 describe('classify', () => {
   test('escalates an obvious medical case regardless of retrieval', async () => {

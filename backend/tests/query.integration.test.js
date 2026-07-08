@@ -5,9 +5,18 @@ jest.mock('../services/llm', () => ({
   embedText: jest.fn((text) => Promise.resolve(require('./testUtils/fakeEmbeddings').fakeEmbed(text)))
 }));
 
+const path = require('path');
 const request = require('supertest');
 const app = require('../server');
 const llm = require('../services/llm');
+const { resetKnowledgeBase } = require('../routes/query');
+const { loadKnowledgeBase } = require('../services/retriever');
+
+// Prime the query router's kbPromise with a KB loaded via a non-existent embeddings
+// path so the integration tests always use the fake embeddings mock, isolated from
+// any venues.embeddings.json on disk.
+const noEmbeddingsPath = path.join(__dirname, '__no_embeddings__.json');
+resetKnowledgeBase(loadKnowledgeBase(undefined, noEmbeddingsPath));
 
 describe('POST /api/query', () => {
   beforeEach(() => {
