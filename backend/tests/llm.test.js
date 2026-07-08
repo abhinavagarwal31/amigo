@@ -1,5 +1,9 @@
 const mockGenerateContent = jest.fn();
-const mockGetGenerativeModel = jest.fn(() => ({ generateContent: mockGenerateContent }));
+const mockEmbedContent = jest.fn();
+const mockGetGenerativeModel = jest.fn(() => ({
+  generateContent: mockGenerateContent,
+  embedContent: mockEmbedContent
+}));
 
 jest.mock('@google/generative-ai', () => ({
   GoogleGenerativeAI: jest.fn().mockImplementation(() => ({
@@ -7,7 +11,7 @@ jest.mock('@google/generative-ai', () => ({
   }))
 }));
 
-const { classifyAmbiguous } = require('../services/llm');
+const { classifyAmbiguous, embedText } = require('../services/llm');
 
 describe('classifyAmbiguous', () => {
   const originalApiKey = process.env.GEMINI_API_KEY;
@@ -79,5 +83,30 @@ describe('classifyAmbiguous', () => {
 
     expect(result.category).toBe('ESCALATE');
     expect(result.reasoning).toBe('possible distress');
+  });
+});
+
+describe('embedText', () => {
+  const originalApiKey = process.env.GEMINI_API_KEY;
+
+  beforeAll(() => {
+    process.env.GEMINI_API_KEY = 'test-key';
+  });
+
+  afterAll(() => {
+    process.env.GEMINI_API_KEY = originalApiKey;
+  });
+
+  beforeEach(() => {
+    mockEmbedContent.mockReset();
+  });
+
+  test('returns the embedding vector from the Gemini embeddings API', async () => {
+    mockEmbedContent.mockResolvedValue({ embedding: { values: [0.1, 0.2, 0.3] } });
+
+    const vector = await embedText('where is the nearest restroom');
+
+    expect(vector).toEqual([0.1, 0.2, 0.3]);
+    expect(mockEmbedContent).toHaveBeenCalledWith('where is the nearest restroom');
   });
 });

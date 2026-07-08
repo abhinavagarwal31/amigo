@@ -23,6 +23,7 @@ Rules you must always follow:
 
 const CLASSIFIER_MODEL = 'gemini-flash-latest';
 const ANSWER_MODEL = 'gemini-flash-latest';
+const EMBEDDING_MODEL = 'text-embedding-004';
 
 let cachedClient = null;
 
@@ -114,6 +115,13 @@ function buildVenueFactsText(venue) {
   return lines.join('\n');
 }
 
+async function embedText(text) {
+  const client = getClient();
+  const model = client.getGenerativeModel({ model: EMBEDDING_MODEL });
+  const result = await model.embedContent(text);
+  return result.embedding.values;
+}
+
 async function generateBriefing({ venue }) {
   const client = getClient();
   const model = client.getGenerativeModel({
@@ -133,7 +141,9 @@ module.exports = {
   generateAnswer,
   classifyAmbiguous,
   generateBriefing,
+  embedText,
   getClient,
   SYSTEM_PROMPT,
-  BRIEFING_SYSTEM_PROMPT
+  BRIEFING_SYSTEM_PROMPT,
+  EMBEDDING_MODEL
 };
