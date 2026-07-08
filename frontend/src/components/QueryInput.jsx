@@ -1,3 +1,5 @@
+import PropTypes from 'prop-types';
+
 export function QueryInput({ value, onChange, onSubmit, disabled }) {
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -27,3 +29,10 @@ export function QueryInput({ value, onChange, onSubmit, disabled }) {
     </form>
   );
 }
+
+QueryInput.propTypes = {
+  value: PropTypes.string.isRequired,
+  onChange: PropTypes.func.isRequired,
+  onSubmit: PropTypes.func.isRequired,
+  disabled: PropTypes.bool
+};

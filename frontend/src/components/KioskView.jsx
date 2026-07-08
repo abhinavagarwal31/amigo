@@ -2,8 +2,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
 import { useAmigoQuery } from '../hooks/useAmigoQuery';
-import { VENUES, LANGUAGES, getLanguageDir } from '../constants';
+import { VENUES } from '../constants';
 import { fetchWithTimeout } from '../fetchWithTimeout';
+import { IdleScreen } from './kiosk/IdleScreen';
+import { ListeningScreen } from './kiosk/ListeningScreen';
+import { ProcessingScreen } from './kiosk/ProcessingScreen';
+import { RespondingErrorScreen } from './kiosk/RespondingErrorScreen';
+import { EscalationScreen } from './kiosk/EscalationScreen';
+import { RespondingScreen } from './kiosk/RespondingScreen';
+import { getKioskEscalationText } from './kiosk/kioskEscalationText';
 
 const INACTIVITY_TIMEOUT_MS = 15000;
 
@@ -13,66 +20,6 @@ const STATE = {
   PROCESSING: 'PROCESSING',
   RESPONDING: 'RESPONDING'
 };
-
-// Fan-facing safety copy, kept separate from the volunteer-facing "reason"/"action"
-// fields the backend returns (those are instructions for a volunteer, not a fan
-// standing alone at an unattended kiosk).
-const KIOSK_ESCALATION_TEXT = {
-  'en-US': {
-    heading: 'This may need urgent help',
-    body: 'Please find the nearest staff member right away, or use the button below to alert staff.',
-    alertButton: 'Alert Nearby Staff',
-    alertSent: 'Staff alerted'
-  },
-  'es-ES': {
-    heading: 'Esto puede necesitar ayuda urgente',
-    body: 'Por favor busque al miembro del personal más cercano de inmediato, o use el botón de abajo para alertar al personal.',
-    alertButton: 'Alertar al personal cercano',
-    alertSent: 'Personal alertado'
-  },
-  'pt-BR': {
-    heading: 'Isso pode precisar de ajuda urgente',
-    body: 'Por favor, encontre o funcionário mais próximo imediatamente, ou use o botão abaixo para alertar a equipe.',
-    alertButton: 'Alertar equipe próxima',
-    alertSent: 'Equipe alertada'
-  },
-  'fr-FR': {
-    heading: 'Cela pourrait nécessiter une aide urgente',
-    body: 'Veuillez trouver le membre du personnel le plus proche immédiatement, ou utilisez le bouton ci-dessous pour alerter le personnel.',
-    alertButton: 'Alerter le personnel à proximité',
-    alertSent: 'Personnel alerté'
-  },
-  'de-DE': {
-    heading: 'Dies könnte dringende Hilfe erfordern',
-    body: 'Bitte finden Sie sofort das nächste Personal, oder nutzen Sie die Schaltfläche unten, um das Personal zu alarmieren.',
-    alertButton: 'Personal in der Nähe alarmieren',
-    alertSent: 'Personal alarmiert'
-  },
-  'it-IT': {
-    heading: 'Questo potrebbe richiedere assistenza urgente',
-    body: "Per favore trova subito il membro dello staff più vicino, oppure usa il pulsante qui sotto per avvisare lo staff.",
-    alertButton: 'Avvisa lo staff vicino',
-    alertSent: 'Staff avvisato'
-  },
-  // Reviewed to the best of non-native confidence, same caveat as the Arabic trigger list
-  // in venues.json — worth a native-speaker check before a real deployment.
-  'ar-SA': {
-    heading: 'قد يتطلب هذا مساعدة عاجلة',
-    body: 'يرجى العثور على أقرب موظف فورًا، أو استخدم الزر أدناه لتنبيه الموظفين.',
-    alertButton: 'تنبيه الموظفين القريبين',
-    alertSent: 'تم تنبيه الموظفين'
-  },
-  'ja-JP': {
-    heading: '緊急の対応が必要な場合があります',
-    body: '至急、最寄りのスタッフを見つけるか、下のボタンでスタッフに知らせてください。',
-    alertButton: '近くのスタッフに知らせる',
-    alertSent: 'スタッフに通知しました'
-  }
-};
-
-function getKioskEscalationText(lang) {
-  return KIOSK_ESCALATION_TEXT[lang] || KIOSK_ESCALATION_TEXT['en-US'];
-}
 
 // A real kiosk is physically deployed at one specific stadium, configured at build/deploy
 // time via VITE_KIOSK_VENUE_ID (see vite.config.js), falling back to the first known venue
@@ -187,135 +134,44 @@ export function KioskView() {
   };
 
   if (state === STATE.IDLE) {
-    return (
-      <main className="kiosk kiosk--idle">
-        {/* Original Logo Badge for Kiosk */}
-        <svg className="kiosk-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-          <path d="M8 9h8" />
-          <path d="M8 13h6" />
-          <circle cx="12" cy="11" r="4" strokeDasharray="2 2" />
-        </svg>
-        <h1>Welcome to Amigo</h1>
-        <p>Select your language to begin.</p>
-        <div className="kiosk-language-grid">
-          {LANGUAGES.map((lang) => (
-            <button
-              key={lang.code}
-              type="button"
-              className="kiosk-lang-btn"
-              onClick={() => handleSelectLanguage(lang.code)}
-            >
-              {lang.label}
-            </button>
-          ))}
-        </div>
-      </main>
-    );
+    return <IdleScreen onSelectLanguage={handleSelectLanguage} />;
   }
 
   if (state === STATE.LISTENING) {
     return (
-      <main className="kiosk kiosk--listening">
-        <h1>Ask your question</h1>
-        <button
-          type="button"
-          aria-pressed={isListening}
-          className={isListening ? 'kiosk-mic-btn kiosk-mic-btn--active' : 'kiosk-mic-btn'}
-          onClick={isListening ? stop : handleStartListening}
-        >
-          {isListening ? (
-            /* Stop Square outline SVG */
-            <svg className="kiosk-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <rect x="4" y="4" width="16" height="16" rx="2" ry="2" />
-            </svg>
-          ) : (
-            /* Mic outline SVG */
-            <svg className="kiosk-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-              <line x1="12" y1="19" x2="12" y2="22" />
-            </svg>
-          )}
-          <span>{isListening ? 'Tap to stop' : 'Tap to speak'}</span>
-        </button>
-        {isListening && <p role="status">Listening…</p>}
-        {!recognitionSupported && (
-          <p role="alert">
-            Voice input is not available on this device. Please ask a nearby volunteer for help.
-          </p>
-        )}
-        {error && <p role="alert">{error}</p>}
-
-        <form onSubmit={handleTypedSubmit} className="kiosk-typed-form">
-          <label htmlFor="kiosk-typed-query">Or type your question</label>
-          <input
-            id="kiosk-typed-query"
-            name="kiosk-typed-query"
-            type="text"
-            value={typedQuery}
-            onChange={(event) => setTypedQuery(event.target.value)}
-          />
-          <button type="submit" disabled={!typedQuery.trim()}>
-            Submit
-          </button>
-        </form>
-
-        <button type="button" className="kiosk-secondary-btn" onClick={resetSession}>
-          Start over
-        </button>
-      </main>
+      <ListeningScreen
+        recognitionSupported={recognitionSupported}
+        isListening={isListening}
+        onStop={stop}
+        onStartListening={handleStartListening}
+        error={error}
+        typedQuery={typedQuery}
+        onTypedQueryChange={setTypedQuery}
+        onTypedSubmit={handleTypedSubmit}
+        onReset={resetSession}
+      />
     );
   }
 
   if (state === STATE.PROCESSING) {
-    return (
-      <main className="kiosk kiosk--processing" role="status">
-        <p>Finding your answer…</p>
-      </main>
-    );
+    return <ProcessingScreen />;
   }
 
   // RESPONDING
   if (error) {
-    return (
-      <main className="kiosk kiosk--responding">
-        <p role="alert">{error}</p>
-        <button type="button" onClick={resetSession}>
-          Ask another question
-        </button>
-      </main>
-    );
+    return <RespondingErrorScreen error={error} onReset={resetSession} />;
   }
 
   if (response && response.escalation) {
-    const kioskText = getKioskEscalationText(language);
     return (
-      <main className="kiosk kiosk--escalation" role="alert" dir={getLanguageDir(language)}>
-        <h1>{kioskText.heading}</h1>
-        <p>{kioskText.body}</p>
-        <button
-          type="button"
-          className="kiosk-alert-btn"
-          disabled={alertSent}
-          onClick={handleAlertStaff}
-        >
-          {alertSent ? kioskText.alertSent : kioskText.alertButton}
-        </button>
-        <button type="button" className="kiosk-secondary-btn" onClick={resetSession}>
-          Done
-        </button>
-      </main>
+      <EscalationScreen
+        language={language}
+        alertSent={alertSent}
+        onAlertStaff={handleAlertStaff}
+        onReset={resetSession}
+      />
     );
   }
 
-  return (
-    <main className="kiosk kiosk--responding" dir={getLanguageDir(language)}>
-      <h1>Answer</h1>
-      <p className="kiosk-answer-text">{response && response.answer}</p>
-      <button type="button" onClick={resetSession}>
-        Ask another question
-      </button>
-    </main>
-  );
+  return <RespondingScreen response={response} language={language} onReset={resetSession} />;
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import PropTypes from 'prop-types';
 import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
 
 export function EscalationBanner({ response, outputLanguage }) {
@@ -52,3 +53,14 @@ export function EscalationBanner({ response, outputLanguage }) {
     </div>
   );
 }
+
+EscalationBanner.propTypes = {
+  response: PropTypes.shape({
+    escalation: PropTypes.bool,
+    reason: PropTypes.string,
+    action: PropTypes.string,
+    category: PropTypes.string,
+    confidence: PropTypes.string
+  }),
+  outputLanguage: PropTypes.string.isRequired
+};

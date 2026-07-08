@@ -27,6 +27,12 @@ const EMBEDDING_MODEL = 'gemini-embedding-001';
 
 let cachedClient = null;
 
+/**
+ * Returns a cached GoogleGenerativeAI client, constructing it lazily from
+ * process.env.GEMINI_API_KEY on first use.
+ * @returns {GoogleGenerativeAI}
+ * @throws {Error} if GEMINI_API_KEY is not set
+ */
 function getClient() {
   if (!cachedClient) {
     const apiKey = process.env.GEMINI_API_KEY;
@@ -43,6 +49,15 @@ function buildContextText(context) {
   return context.map((doc) => `- ${doc.text}`).join('\n');
 }
 
+/**
+ * Generates a grounded answer for a fan's query, refusing to state anything not
+ * present in the provided context (see SYSTEM_PROMPT).
+ * @param {object} params
+ * @param {string} params.query - the fan's question, already sanitized
+ * @param {Array<object>} params.context - retrieved fact docs to ground the answer in
+ * @param {string} [params.outputLanguage] - BCP-47 tag for the response language (default 'en')
+ * @returns {Promise<string>} the generated answer text
+ */
 async function generateAnswer({ query, context, outputLanguage }) {
   const client = getClient();
   const model = client.getGenerativeModel({
@@ -58,6 +73,13 @@ async function generateAnswer({ query, context, outputLanguage }) {
   return result.response.text().trim();
 }
 
+/**
+ * Asks the LLM to judge whether an ambiguous query describes an urgent/escalation
+ * situation. Fails closed to ESCALATE if the model call errors or returns unparseable
+ * output, since an uncertain safety judgment must never silently resolve to "it's fine".
+ * @param {string} query - the fan's question, already sanitized
+ * @returns {Promise<{category: 'ESCALATE'|'GROUNDED_FACT', reasoning: string}>}
+ */
 async function classifyAmbiguous(query) {
   const client = getClient();
   const model = client.getGenerativeModel({ model: CLASSIFIER_MODEL });
@@ -119,6 +141,12 @@ function buildVenueFactsText(venue) {
 // RETRIEVAL_QUERY (rather than the untyped default) meaningfully widens the similarity gap
 // between a query and its matching fact vs. an unrelated one, which is what retrieval's
 // cosine-similarity threshold depends on.
+/**
+ * Computes a semantic embedding vector for text via gemini-embedding-001.
+ * @param {string} text - the text to embed (a fact doc or a fan's query)
+ * @param {string} taskType - Gemini task-type hint, e.g. 'RETRIEVAL_DOCUMENT' or 'RETRIEVAL_QUERY'
+ * @returns {Promise<number[]>} the embedding vector
+ */
 async function embedText(text, taskType) {
   const client = getClient();
   const model = client.getGenerativeModel({ model: EMBEDDING_MODEL });
@@ -129,6 +157,13 @@ async function embedText(text, taskType) {
   return result.embedding.values;
 }
 
+/**
+ * Generates a short daily shift briefing for volunteers at a specific venue, grounded
+ * only in that venue's current facts (see BRIEFING_SYSTEM_PROMPT).
+ * @param {object} params
+ * @param {object} params.venue - a single venue entry from venues.json
+ * @returns {Promise<string>} the generated briefing text
+ */
 async function generateBriefing({ venue }) {
   const client = getClient();
   const model = client.getGenerativeModel({

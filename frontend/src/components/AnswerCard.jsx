@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import PropTypes from 'prop-types';
 import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
 import { getLanguageDir } from '../constants';
 
@@ -70,3 +71,20 @@ export function AnswerCard({ response, outputLanguage }) {
     </section>
   );
 }
+
+AnswerCard.propTypes = {
+  response: PropTypes.shape({
+    answer: PropTypes.string,
+    category: PropTypes.string,
+    confidence: PropTypes.string,
+    escalation: PropTypes.bool,
+    sourceDocs: PropTypes.arrayOf(
+      PropTypes.shape({
+        type: PropTypes.string,
+        text: PropTypes.string,
+        venueId: PropTypes.string
+      })
+    )
+  }),
+  outputLanguage: PropTypes.string.isRequired
+};

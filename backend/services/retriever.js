@@ -51,6 +51,12 @@ function stripArabicDefiniteArticle(token) {
   return token;
 }
 
+/**
+ * Tokenizes text into lowercase, stopword-filtered word tokens for keyword-based
+ * matching (used by classifier.js's escalation-trigger detection).
+ * @param {string} text - raw input text, any of the supported languages
+ * @returns {string[]} normalized tokens with stopwords and punctuation removed
+ */
 function tokenize(text) {
   return text
     .toLowerCase()
@@ -68,6 +74,12 @@ function tokenize(text) {
 // Hiragana (U+3040-309F) + Katakana (U+30A0-30FF) + CJK Unified Ideographs / Kanji (U+4E00-9FFF).
 const JAPANESE_CHAR_REGEX = /[぀-ヿ一-鿿]/;
 
+/**
+ * Detects whether text contains Japanese characters (Hiragana, Katakana, or Kanji),
+ * since the whitespace-based tokenizer above cannot produce meaningful tokens for it.
+ * @param {string} text
+ * @returns {boolean}
+ */
 function isJapaneseText(text) {
   return JAPANESE_CHAR_REGEX.test(text);
 }
@@ -120,6 +132,12 @@ function buildDocs(venue) {
 
 // Stable key for looking up a doc's precomputed embedding vector, matching the key
 // written by scripts/precompute-embeddings.js. Must stay in sync with that script.
+/**
+ * Builds the stable lookup key for a doc's precomputed embedding vector. Must stay in
+ * sync with the key format written by scripts/precompute-embeddings.js.
+ * @param {object} doc
+ * @returns {string}
+ */
 function docKey(doc) {
   return `${doc.venueId}::${doc.type}::${doc.text}`;
 }
@@ -129,6 +147,15 @@ function docKey(doc) {
 // `doc.text` (the plain-language fact, e.g. "Restroom at Section 214 concourse...") —
 // embeddings capture meaning directly, so there's no need for keyword-synonym stuffing
 // the way literal token overlap once required.
+/**
+ * Builds the searchable doc index for one venue, attaching a semantic embedding to
+ * each fact (gate, restroom, transit, policy). Uses a precomputed vector when available
+ * to avoid an API call per doc on every cold start.
+ * @param {object} venue - a single venue entry from venues.json
+ * @param {object|null} precomputed - map of docKey() -> embedding vector, or null/undefined
+ *   to compute embeddings live via the Gemini API
+ * @returns {Promise<Array<object>>} the venue's docs, each with an added `embedding` field
+ */
 async function buildDocIndex(venue, precomputed) {
   const docs = buildDocs(venue);
   const embeddings = await Promise.all(
@@ -146,6 +173,14 @@ async function buildDocIndex(venue, precomputed) {
   return docs.map((doc, i) => ({ ...doc, embedding: embeddings[i] }));
 }
 
+/**
+ * Loads the venue knowledge base from disk and builds the embedded doc index for every
+ * venue, using precomputed embeddings when present and falling back to live computation
+ * otherwise.
+ * @param {string} [kbPath] - path to venues.json
+ * @param {string} [embeddingsPath] - path to the precomputed embeddings JSON file
+ * @returns {Promise<object>} the parsed venues data plus a flattened `docIndex` array
+ */
 async function loadKnowledgeBase(
   kbPath = path.join(__dirname, '..', 'data', 'venues.json'),
   embeddingsPath = EMBEDDINGS_PATH
@@ -174,6 +209,12 @@ function stripInternalFields({ embedding, ...doc }) {
   return doc;
 }
 
+/**
+ * Computes cosine similarity between two embedding vectors.
+ * @param {number[]} a
+ * @param {number[]} b
+ * @returns {number} similarity in [-1, 1] (0 if either vector has zero magnitude)
+ */
 function cosineSimilarity(a, b) {
   let dot = 0;
   let normA = 0;
@@ -197,6 +238,16 @@ function cosineSimilarity(a, b) {
 // doesn't actually contain the answer.
 const SIMILARITY_THRESHOLD = 0.6;
 
+/**
+ * Retrieves the most relevant knowledge-base facts for a query using semantic
+ * (embedding-based) similarity search.
+ * @param {string} query - the fan's question, any supported language, already sanitized
+ * @param {object} [options]
+ * @param {string} [options.venueId] - restrict results to this venue if provided
+ * @param {number} [options.topK=3] - maximum number of results to return
+ * @param {object} [options.kb] - pre-loaded knowledge base (for tests); loads fresh if omitted
+ * @returns {Promise<Array<object>>} matching fact documents, highest similarity first
+ */
 async function retrieve(query, options = {}) {
   const { venueId, topK = 3, kb } = options;
   const knowledgeBase = kb || (await loadKnowledgeBase());

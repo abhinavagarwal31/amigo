@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import PropTypes from 'prop-types';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 
 export function VoiceInputButton({ lang, onTranscript, disabled }) {
@@ -58,3 +59,9 @@ export function VoiceInputButton({ lang, onTranscript, disabled }) {
     </div>
   );
 }
+
+VoiceInputButton.propTypes = {
+  lang: PropTypes.string.isRequired,
+  onTranscript: PropTypes.func.isRequired,
+  disabled: PropTypes.bool
+};
