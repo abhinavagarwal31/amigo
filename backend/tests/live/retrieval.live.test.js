@@ -3,7 +3,10 @@
 // Run explicitly with `npm run test:live`, which requires GEMINI_API_KEY in the environment.
 // Unlike gemini.live.test.js (which exercises the full /api/query pipeline, including answer
 // generation), this file calls retrieve() directly so it can assert on retrieval identity and
-// scoring in isolation, without also paying for an LLM answer-generation call per case.
+// scoring in isolation, without also paying for an LLM answer-generation call per case. Since
+// it never requires server.js, it needs its own dotenv load to pick up GEMINI_API_KEY from
+// .env (gemini.live.test.js gets this for free as a side effect of requiring the server app).
+require('dotenv').config();
 const { retrieve, loadKnowledgeBase, SIMILARITY_THRESHOLD } = require('../../services/retriever');
 
 const canRunLive = !!process.env.GEMINI_API_KEY && process.env.RUN_LIVE_TESTS === 'true';

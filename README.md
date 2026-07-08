@@ -109,7 +109,7 @@ strictly from `venues.json` facts.
   volunteer view and the kiosk view always provide a fully functional text-input fallback —
   voice is a convenience layer on top of typing, never a requirement.
 - Retrieval is embedding-based: each fact doc's plain-language text is embedded once via
-  Gemini (`text-embedding-004`) at knowledge-base load time and cached in memory; each
+  Gemini (`gemini-embedding-001`) at knowledge-base load time and cached in memory; each
   incoming query is embedded once per request and matched by cosine similarity against
   those cached doc vectors. This means a query needs no vocabulary in common with the
   stored fact to retrieve it correctly — a paraphrase like "is there somewhere my kid can

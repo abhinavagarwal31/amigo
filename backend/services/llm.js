@@ -23,7 +23,7 @@ Rules you must always follow:
 
 const CLASSIFIER_MODEL = 'gemini-flash-latest';
 const ANSWER_MODEL = 'gemini-flash-latest';
-const EMBEDDING_MODEL = 'text-embedding-004';
+const EMBEDDING_MODEL = 'gemini-embedding-001';
 
 let cachedClient = null;
 
