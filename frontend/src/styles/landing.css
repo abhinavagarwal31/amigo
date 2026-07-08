@@ -6,34 +6,49 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #0d1b2a;
-  color: #ffffff;
+  background: var(--amigo-bg);
+  color: var(--amigo-text-primary);
   padding: 2rem;
+  font-family: var(--amigo-font);
 }
 
 .landing-inner {
   text-align: center;
   max-width: 640px;
   width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Original Crest/Badge Style (stadium-inspired pitch shield) */
+.landing-crest {
+  width: 80px;
+  height: 80px;
+  margin-bottom: 1.5rem;
+  color: var(--amigo-accent);
 }
 
 .landing-title {
-  font-size: 3rem;
+  font-size: clamp(2.5rem, 5vw, 3.5rem);
   font-weight: 800;
   margin: 0 0 0.5rem;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
+  color: var(--amigo-text-primary);
 }
 
 .landing-subtitle {
-  font-size: 1.1rem;
-  color: #93a8be;
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  color: var(--amigo-text-secondary);
   margin: 0 0 3rem;
+  line-height: 1.5;
 }
 
 .landing-nav {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
+  width: 100%;
 }
 
 @media (max-width: 480px) {
@@ -46,42 +61,43 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  text-align: center;
+  gap: 0.75rem;
   padding: 2rem 1.5rem;
-  border-radius: 12px;
+  border-radius: var(--amigo-radius-lg);
   text-decoration: none;
-  color: #0d1b2a;
-  background: #ffffff;
-  font-family: inherit;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  background: var(--amigo-surface);
+  border: 1px solid var(--amigo-border);
+  color: var(--amigo-text-primary);
+  transition: transform var(--amigo-transition), border-color var(--amigo-transition), box-shadow var(--amigo-transition);
 }
 
 .landing-btn:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  transform: translateY(-4px);
+  border-color: var(--amigo-accent);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
 .landing-btn:focus-visible {
-  outline: 4px solid #ffd166;
-  outline-offset: 3px;
-}
-
-.landing-btn--kiosk {
-  background: #1a4d8f;
-  color: #ffffff;
+  outline: 3px solid var(--amigo-accent);
+  outline-offset: 4px;
 }
 
 .landing-btn-icon {
-  font-size: 2.5rem;
-  line-height: 1;
+  width: 40px;
+  height: 40px;
+  color: var(--amigo-accent);
+  margin-bottom: 0.25rem;
 }
 
 .landing-btn-label {
-  font-size: 1.2rem;
+  font-size: 1.25rem;
   font-weight: 700;
+  color: var(--amigo-text-primary);
 }
 
 .landing-btn-desc {
-  font-size: 0.85rem;
-  opacity: 0.75;
+  font-size: 0.9rem;
+  color: var(--amigo-text-secondary);
+  line-height: 1.4;
 }

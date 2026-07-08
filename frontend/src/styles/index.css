@@ -1,102 +1,339 @@
+/* index.css — volunteer view global styles, rewritten to use theme tokens */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 :root {
-  color-scheme: light;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  color-scheme: dark;
+  font-family: var(--amigo-font);
+  font-size: 15px;
+  line-height: 1.6;
 }
 
 body {
   margin: 0;
-  background: #f5f5f5;
-  color: #1a1a1a;
+  background: var(--amigo-bg);
+  color: var(--amigo-text-primary);
 }
 
-main {
+/* ── Volunteer layout ───────────────────────────────── */
+
+.volunteer-layout {
   max-width: 640px;
   margin: 0 auto;
-  padding: 1.5rem;
+  padding: 2rem 1.5rem 3rem;
 }
 
-h1 {
-  font-size: 1.75rem;
+/* ── App header ─────────────────────────────────────── */
+
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+.app-badge {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+.app-title {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--amigo-text-primary);
+}
+
+/* ── Selectors ──────────────────────────────────────── */
+
+.selectors {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 420px) {
+  .selectors { grid-template-columns: 1fr; }
+}
+
+.selector-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 label {
-  display: block;
+  font-size: 0.8rem;
   font-weight: 600;
-  margin-top: 1rem;
-  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--amigo-text-muted);
 }
 
-select,
+select {
+  width: 100%;
+  font-family: var(--amigo-font);
+  font-size: 0.95rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--amigo-border);
+  border-radius: var(--amigo-radius-sm);
+  background: var(--amigo-surface);
+  color: var(--amigo-text-primary);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a9a91' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  padding-right: 2rem;
+  transition: border-color var(--amigo-transition);
+}
+
+select:hover { border-color: var(--amigo-accent); }
+
+/* ── Query form ─────────────────────────────────────── */
+
+.query-input-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
 textarea {
   width: 100%;
+  font-family: var(--amigo-font);
   font-size: 1rem;
-  padding: 0.5rem;
-  border: 1px solid #4a4a4a;
-  border-radius: 4px;
-  box-sizing: border-box;
+  padding: 0.75rem;
+  border: 1px solid var(--amigo-border);
+  border-radius: var(--amigo-radius-sm);
+  background: var(--amigo-surface);
+  color: var(--amigo-text-primary);
+  resize: vertical;
+  min-height: 80px;
+  transition: border-color var(--amigo-transition);
 }
 
-button {
-  margin-top: 0.75rem;
-  padding: 0.6rem 1.2rem;
-  font-size: 1rem;
+textarea:hover { border-color: var(--amigo-border); }
+
+textarea::placeholder { color: var(--amigo-text-muted); }
+
+.ask-btn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.25rem;
+  font-family: var(--amigo-font);
+  font-size: 0.95rem;
   font-weight: 600;
-  color: #ffffff;
-  background: #1a4d8f;
+  color: var(--amigo-bg);
+  background: var(--amigo-accent);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--amigo-radius-sm);
   cursor: pointer;
+  transition: background var(--amigo-transition), transform var(--amigo-transition);
 }
 
-button:disabled {
-  background: #8a8a8a;
+.ask-btn:hover:not(:disabled) {
+  background: var(--amigo-accent-strong);
+  color: var(--amigo-text-primary);
+}
+
+.ask-btn:active:not(:disabled) { transform: translateY(1px); }
+
+.ask-btn:disabled {
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
-button:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
-  outline: 3px solid #1a4d8f;
-  outline-offset: 2px;
+/* ── Voice input ─────────────────────────────────────── */
+
+.voice-input {
+  margin-top: 0.5rem;
+}
+
+.voice-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-family: var(--amigo-font);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--amigo-text-secondary);
+  background: transparent;
+  border: 1px solid var(--amigo-border);
+  border-radius: var(--amigo-radius-sm);
+  cursor: pointer;
+  transition: border-color var(--amigo-transition), color var(--amigo-transition);
+}
+
+.voice-btn:hover:not(:disabled) {
+  border-color: var(--amigo-accent);
+  color: var(--amigo-accent);
 }
 
 .voice-btn--listening {
-  background: #a12020;
+  border-color: var(--amigo-danger);
+  color: var(--amigo-danger);
+  animation: pulse-border 1.2s ease-in-out infinite;
 }
 
+@keyframes pulse-border {
+  0%, 100% { border-color: var(--amigo-danger); }
+  50%       { border-color: color-mix(in srgb, var(--amigo-danger) 40%, transparent); }
+}
+
+.voice-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
 .voice-status {
+  font-size: 0.85rem;
   font-weight: 600;
+  color: var(--amigo-accent);
+  margin: 0.4rem 0 0;
 }
 
 .voice-error,
 .query-error {
-  color: #a12020;
-  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--amigo-danger);
+  margin: 0.4rem 0 0;
 }
+
+/* ── Status/loading ──────────────────────────────────── */
+
+.loading-status {
+  color: var(--amigo-text-muted);
+  font-size: 0.9rem;
+  margin: 0.75rem 0 0;
+}
+
+/* ── Answer card ─────────────────────────────────────── */
 
 .answer-card {
   margin-top: 1.5rem;
-  padding: 1rem;
-  background: #ffffff;
-  border: 1px solid #cfcfcf;
-  border-radius: 6px;
+  padding: 1.25rem;
+  background: var(--amigo-surface);
+  border: 1px solid var(--amigo-border);
+  border-radius: var(--amigo-radius-md);
+}
+
+.answer-card h2 {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--amigo-accent);
+  margin: 0 0 0.75rem;
+}
+
+.answer-text {
+  font-size: 1rem;
+  line-height: 1.65;
+  margin: 0 0 0.75rem;
+  color: var(--amigo-text-primary);
+}
+
+.answer-meta {
+  font-size: 0.78rem;
+  color: var(--amigo-text-muted);
+  margin: 0 0 0.75rem;
 }
 
 .answer-warning {
-  color: #7a5b00;
-  font-weight: 600;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: #f0c040;
+  margin: 0 0 0.75rem;
 }
+
+.answer-card button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  font-family: var(--amigo-font);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--amigo-text-secondary);
+  background: transparent;
+  border: 1px solid var(--amigo-border);
+  border-radius: var(--amigo-radius-sm);
+  cursor: pointer;
+  transition: border-color var(--amigo-transition), color var(--amigo-transition);
+}
+
+.answer-card button:hover {
+  border-color: var(--amigo-accent);
+  color: var(--amigo-accent);
+}
+
+.answer-card details { margin-top: 0.75rem; }
+
+.answer-card summary {
+  font-size: 0.8rem;
+  color: var(--amigo-text-muted);
+  cursor: pointer;
+}
+
+.answer-card ul {
+  font-size: 0.82rem;
+  color: var(--amigo-text-secondary);
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+  line-height: 1.6;
+}
+
+/* ── Escalation banner ───────────────────────────────── */
 
 .escalation-banner {
   margin-top: 1.5rem;
-  padding: 1rem;
-  background: #7a1a1a;
-  color: #ffffff;
-  border-radius: 6px;
-  border: 2px solid #4a0e0e;
+  padding: 1.25rem;
+  background: var(--amigo-danger-bg);
+  border: 2px solid var(--amigo-danger);
+  border-radius: var(--amigo-radius-md);
+  color: var(--amigo-text-primary);
 }
 
+.escalation-banner h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  color: var(--amigo-danger);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.escalation-banner p { margin: 0 0 0.5rem; font-size: 0.95rem; }
+.escalation-banner p:last-of-type { margin-bottom: 0.75rem; }
+
 .escalation-banner button {
-  background: #ffffff;
-  color: #7a1a1a;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  font-family: var(--amigo-font);
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: var(--amigo-danger);
+  color: var(--amigo-text-primary);
+  border: none;
+  border-radius: var(--amigo-radius-sm);
+  cursor: pointer;
+}
+
+/* ── Focus ring — consistent across all interactive elements ── */
+
+:focus-visible {
+  outline: 2px solid var(--amigo-accent);
+  outline-offset: 3px;
 }

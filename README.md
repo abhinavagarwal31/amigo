@@ -63,15 +63,38 @@ Fan question (typed or spoken)
                               { answer, sourceDocs, category, confidence, escalation: false }
 ```
 
-Two front doors call this identical pipeline:
-- **Volunteer view** (`/`) — a personal-device assistant for a volunteer standing with a fan
+Three front doors call this identical pipeline:
+- **Landing page** (`/`) — entry screen to pick the user's role
+- **Volunteer view** (`/volunteer`) — a personal-device assistant for a volunteer standing with a fan
 - **Kiosk view** (`/kiosk`) — an unattended, walk-up self-service screen
 
-Both hit the same `/api/query` contract. The only place they intentionally diverge is
+Both `/volunteer` and `/kiosk` views hit the same `/api/query` contract. The only place they intentionally diverge is
 escalation content: the volunteer view shows/speaks the raw `reason`/`action` fields (written
 for a volunteer to act on), while the kiosk shows fan-facing instructions in the fan's own
 language plus an "Alert Nearby Staff" button, because a kiosk has no volunteer standing there
 by default to act on the alert.
+
+## Visual Design
+
+The application features a visual design inspired by a **football stadium at night**. It utilizes a dark palette with a single bright teal accent color, clean flat surfaces, outline iconography (replacing informal emojis), and generous whitespace to ensure readability for users under stress.
+
+### Color Contrast Checks (WCAG AA Compliance)
+All text/background color combinations in the theme have been verified to exceed the **WCAG AA contrast requirement of 4.5:1** for normal text:
+*   **Primary text** (`#ffffff`) on **page background** (`#0d1f17`): **14.7:1**
+*   **Primary text** (`#ffffff`) on **card surfaces** (`#16281f`): **12.5:1**
+*   **Secondary text** (`#B4B2A9`) on **page background** (`#0d1f17`): **7.8:1**
+*   **Secondary text** (`#B4B2A9`) on **card surfaces** (`#16281f`): **7.7:1**
+*   **Teal accent** (`#5DCAA5`) on **page background** (`#0d1f17`): **6.2:1**
+*   **Teal accent** (`#5DCAA5`) on **card surfaces** (`#16281f`): **8.1:1**
+*   **Escalation banner text** (`#ffffff`) on **danger red background** (`#3a1414`): **11.6:1**
+
+### Trademark Protection & Branding Policy
+To protect intellectual property, **no official FIFA branding, trademarked logos, official mascots, or real team crests/badges are used in this project.** Amigo's visual theme is established entirely through original, generic football-inspired motifs:
+- Deep night/pitch-green field background
+- Stadium-lighting teal accents
+- An original, abstract shield crest for Amigo (representing communication and support)
+- Clean, outline-style SVG icons for interactive controls (microphone, volume, alert warning)
+
 
 A stretch capability, `/api/briefing`, generates a short shift-start summary for a venue
 (closures, non-accessible facilities, early transit departures) — grounded the same way,

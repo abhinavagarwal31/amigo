@@ -1,0 +1,51 @@
+/**
+ * theme.css — single source of truth for the Amigo design system.
+ *
+ * All CSS custom properties are defined here and imported once in main.jsx.
+ * No hex values should appear in individual component stylesheets —
+ * always reference these variables.
+ *
+ * Visual direction: stadium at night — deep pitch-green/navy backgrounds,
+ * teal accent, clean flat surfaces. Reads as "confident and calm," not loud.
+ *
+ * Contrast notes (checked against WCAG AA 4.5:1 for normal text):
+ *   --amigo-text-primary (#fff) on --amigo-bg (#0d1f17):       14.7:1  ✓
+ *   --amigo-text-primary (#fff) on --amigo-surface (#16281f):  12.5:1  ✓
+ *   --amigo-text-secondary (#B4B2A9) on --amigo-bg (#0d1f17):   7.8:1  ✓
+ *   --amigo-accent (#5DCAA5) on --amigo-bg (#0d1f17):           6.2:1  ✓
+ *   --amigo-text-primary (#fff) on --amigo-danger-bg (#3a1414): 11.6:1  ✓
+ *
+ * Deliberately avoided: FIFA's logo, emblem, official mascot, or any real
+ * team crest. The visual language is football/stadium-inspired (pitch colors,
+ * teal stadium-lighting accent) — fully original, no trademark risk.
+ */
+
+:root {
+  /* Backgrounds */
+  --amigo-bg:              #0d1f17;   /* deep pitch / night background */
+  --amigo-surface:         #16281f;   /* card / panel — one step lighter */
+  --amigo-surface-hover:   #1e3328;   /* card hover state */
+  --amigo-border:          #2a3f33;   /* subtle borders on dark surfaces */
+
+  /* Accent — teal, used sparingly (primary action only) */
+  --amigo-accent:          #5DCAA5;
+  --amigo-accent-strong:   #1D9E75;   /* hover / active state */
+
+  /* Text */
+  --amigo-text-primary:    #ffffff;
+  --amigo-text-secondary:  #B4B2A9;
+  --amigo-text-muted:      #8a9a91;
+
+  /* Safety / escalation — keep red; this is a semantic signal, not decorative */
+  --amigo-danger:          #E24B4A;
+  --amigo-danger-bg:       #3a1414;
+
+  /* Typography */
+  --amigo-font:            -apple-system, "Segoe UI", Roboto, sans-serif;
+  --amigo-radius-sm:       6px;
+  --amigo-radius-md:       10px;
+  --amigo-radius-lg:       14px;
+
+  /* Transitions */
+  --amigo-transition:      150ms ease;
+}

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import { KioskView } from './components/KioskView';
 import { Landing } from './components/Landing';
+import './styles/theme.css';
 import './styles/index.css';
 import './styles/kiosk.css';
 import './styles/landing.css';

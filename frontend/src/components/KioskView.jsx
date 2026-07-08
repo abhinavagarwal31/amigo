@@ -197,6 +197,13 @@ export function KioskView() {
   if (state === STATE.IDLE) {
     return (
       <main className="kiosk kiosk--idle">
+        {/* Original Logo Badge for Kiosk */}
+        <svg className="kiosk-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          <path d="M8 9h8" />
+          <path d="M8 13h6" />
+          <circle cx="12" cy="11" r="4" strokeDasharray="2 2" />
+        </svg>
         <h1>Welcome to Amigo</h1>
         <p>Select your language to begin.</p>
         <div className="kiosk-language-grid">
@@ -225,7 +232,19 @@ export function KioskView() {
           className={isListening ? 'kiosk-mic-btn kiosk-mic-btn--active' : 'kiosk-mic-btn'}
           onClick={isListening ? stop : handleStartListening}
         >
-          <span aria-hidden="true">{isListening ? '⏹' : '\u{1F3A4}'}</span>
+          {isListening ? (
+            /* Stop Square outline SVG */
+            <svg className="kiosk-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="4" y="4" width="16" height="16" rx="2" ry="2" />
+            </svg>
+          ) : (
+            /* Mic outline SVG */
+            <svg className="kiosk-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+              <line x1="12" y1="19" x2="12" y2="22" />
+            </svg>
+          )}
           <span>{isListening ? 'Tap to stop' : 'Tap to speak'}</span>
         </button>
         {isListening && <p role="status">Listening…</p>}
